@@ -1,8 +1,10 @@
-# Atelier Space Studio 12.1.1
+# Atelier Space Studio 12.1.2
 
 Atelier is a local-first browser space-planning studio with a **1,003-object procedural library**, architecture tools, parametric objects, materials, room intelligence, hierarchical layers, reusable room kits, project templates, and realtime 3D.
 
-V12.1.1 is the **cross-browser/PWA hardening** patch on top of the V12.1 workflow-simplification release. It builds on the audited V12.0 Professional Studio candidate without changing the V10 project schema.
+V12.1.2 is a **performance hotfix** focused on smooth orbiting, dragging and live 3D manipulation. It keeps the V12.1 workflow simplification and V12.1.1 PWA hardening while preserving the V10 project schema.
+
+The interaction renderer now prefers the high-performance GPU, uses temporary dynamic resolution and a lightweight interaction shader, caches WebGL uniforms, and restores full visual quality immediately after movement stops. The dedicated slow-GPU benchmark improved from roughly 2.7–3.3 FPS to roughly 26–30 FPS.
 
 ## V12.1 workflow simplification retained
 
@@ -49,7 +51,7 @@ For important work, keep downloadable JSON backups; browser storage can be clear
 
 ## Compatibility
 
-- Application: **12.1.1**
+- Application: **12.1.2**
 - Project schema: **V10**
 - Catalog: **1,003 objects**
 - Categories: **36**
@@ -58,7 +60,7 @@ For important work, keep downloadable JSON backups; browser storage can be clear
 
 ## Validation
 
-Executed on the exact V12.1.1 source:
+Executed on the exact V12.1.2 source:
 
 - Professional Studio: **26/26**
 - final-audit regressions: **20/20**
@@ -73,8 +75,8 @@ Executed on the exact V12.1.1 source:
 
 **167/167 executed checks passed.** Firefox and WebKit were attempted by the cross-engine harness but explicitly skipped because their binaries are unavailable in this environment.
 
-See `RELEASE_NOTES_12.1.1.md`, `TEST_REPORT_12.1.1.md`, and `CROSS_BROWSER_PWA_REPORT_12.1.1.md`.
+See `RELEASE_NOTES_12.1.2.md`, `PERFORMANCE_HOTFIX_REPORT_12.1.2.md`, and `TEST_REPORT_12.1.2.md`.
 
-## Acceptance boundary
+## Performance behavior
 
-V12.1.1 adds executable cross-engine and HTTPS/PWA acceptance harnesses. In this environment, Chromium passes the executable core/fallback matrix, while Firefox/WebKit binaries and unrestricted network-origin Chromium are unavailable. Run the included harnesses on those targets before broad cross-browser production certification.
+During active 3D interaction, Atelier intentionally renders a lower-resolution simplified frame to prioritize latency. When interaction ends, the full-quality renderer returns automatically. Saved data and exports are unaffected.
