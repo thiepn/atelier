@@ -1,82 +1,68 @@
-# Atelier Space Studio 12.1.2
+# Atelier Space Studio 12.1.3
 
 Atelier is a local-first browser space-planning studio with a **1,003-object procedural library**, architecture tools, parametric objects, materials, room intelligence, hierarchical layers, reusable room kits, project templates, and realtime 3D.
 
-V12.1.2 is a **performance hotfix** focused on smooth orbiting, dragging and live 3D manipulation. It keeps the V12.1 workflow simplification and V12.1.1 PWA hardening while preserving the V10 project schema.
+V12.1.3 is a **smooth-interaction corrective release**. It replaces the V12.1.2 gesture-time dynamic-resolution strategy after real-device feedback showed that the resolution drop made motion visibly worse without solving the lag on the affected machine.
 
-The interaction renderer now prefers the high-performance GPU, uses temporary dynamic resolution and a lightweight interaction shader, caches WebGL uniforms, and restores full visual quality immediately after movement stops. The dedicated slow-GPU benchmark improved from roughly 2.7–3.3 FPS to roughly 26–30 FPS.
+## What changed in 12.1.3
 
-## V12.1 workflow simplification retained
+- **No gesture-time canvas resize.** Orbiting and dragging keep the same WebGL backing resolution from pointer-down through pointer-up.
+- **No quality change on click.** The lightweight motion path activates only after actual pointer movement.
+- **No half-second backing-store reallocation stall.** The reproduced SwiftShader mode-switch cost fell from roughly **464 ms** in V12.1.2 to roughly **0.1 ms** in V12.1.3.
+- **Animation-frame input coalescing.** Camera pointer events are consumed once per display frame instead of performing redundant camera work at raw mouse-polling frequency.
+- **Same-frame camera rendering.** Camera input no longer creates an avoidable second requestAnimationFrame hop.
+- **Deferred cutaway rebuilds.** Expensive wall-quadrant geometry updates wait until the gesture ends.
+- **Crisp full-resolution motion shader.** Motion keeps native backing resolution and reuses the last valid shadow map with one cheap sample for spatial depth.
+- **No shadow-map regeneration while moving.** The cached map is reused during the gesture; full material/shadow/presentation rendering resumes immediately on release.
+- **MSAA disabled for the realtime WebGL canvas** to recover rendering headroom without lowering backing resolution.
 
-### Cleaner primary navigation
+Saved project geometry, V10 serialization, professional tools, normal idle rendering, and exports are unchanged by the motion optimization.
 
-The mode bar now keeps only the high-value entries visible:
+## Performance validation
 
-- Studio
-- Advanced
-- Arrange
+On an intentionally hostile Chromium + SwiftShader WebGL2 path:
 
-Connected, AI, Ecosystem and Platform still exist, but are grouped inside **Advanced services** instead of competing as parallel primary destinations.
+- interaction mode switch: **~464 ms → ~0.1 ms**
+- orbit: **~27.8 FPS** at full 768 × 631 backing resolution in the final run
+- object transform preview: **~21.2 FPS** at full backing resolution in the final run
+- canvas backing size during gesture: **unchanged**
 
-### Workflow-based Studio toolkit
+These numbers are environment-specific stress-test measurements, not a guaranteed device-independent FPS claim. The purpose is to verify that the V12.1.2 resize stall is gone and that the full-resolution motion path remains usable even on a software-rendered WebGL backend.
 
-Studio is grouped into:
+## Workflow retained from V12.1
 
-- **Build & coordinate**
-- **Design & present**
-- **Review & deliver**
-- **Advanced & setup**
+The primary mode bar remains **Studio / Advanced / Arrange**. Studio is grouped into Build & coordinate, Design & present, Review & deliver, and Advanced & setup. Start here remains available for the shortest room → furnish → save/export workflow.
 
-No professional subsystem was removed.
+Save / Backup / Export remain distinct:
 
-### Start here
-
-An optional three-step onboarding path explains:
-
-1. Set the room
-2. Furnish & refine
-3. Protect & deliver
-
-It also explains when to use quick Room-shell editing versus the professional Architecture graph.
-
-### Save / Backup / Export
-
-These are now explicit separate actions in the top bar:
-
-- `Ctrl/Cmd + S` — **Save** to browser storage
-- `Ctrl/Cmd + Shift + S` — **Backup** editable JSON
-- `Ctrl/Cmd + E` — **Export** deliverables
-
-For important work, keep downloadable JSON backups; browser storage can be cleared or evicted.
+- `Ctrl/Cmd + S` — save to browser storage
+- `Ctrl/Cmd + Shift + S` — download editable JSON backup
+- `Ctrl/Cmd + E` — export deliverables
 
 ## Compatibility
 
-- Application: **12.1.2**
+- Application: **12.1.3**
 - Project schema: **V10**
 - Catalog: **1,003 objects**
 - Categories: **36**
 - Active-floor object ceiling: **5,000**
-- Migration required from V10/V11/V12.0/V12.1.0 projects: **No**
+- Project migration required: **No**
 
 ## Validation
 
-Executed on the exact V12.1.2 source:
+Executed against the exact V12.1.3 source:
 
 - Professional Studio: **26/26**
 - final-audit regressions: **20/20**
-- V12.1 workflow/usability regressions: **32/32**
+- V12.1 workflow/usability: **32/32**
+- browser capability/fallback: **17/17**
 - V11.9 project management: **18/18**
-- V11.9 lifecycle: **7/7**
+- V11.9 lifecycle/data safety: **7/7**
 - V11.8 visual regression: **19/19**
-- forced WebGL2: **7/7**
-- browser capability/fallback regression: **17/17**
+- forced WebGL2/GPU: **7/7**
+- V12.1.3 smooth-interaction suite: **18/18**
 - service-worker lifecycle contract: **11/11**
-- available Chromium cross-browser core: **10/10**
 
-**167/167 executed checks passed.** Firefox and WebKit were attempted by the cross-engine harness but explicitly skipped because their binaries are unavailable in this environment.
+**175/175 selected checks passed.** These suites overlap and should not be interpreted as 164 unique product requirements.
 
-See `RELEASE_NOTES_12.1.2.md`, `PERFORMANCE_HOTFIX_REPORT_12.1.2.md`, and `TEST_REPORT_12.1.2.md`.
-
-## Performance behavior
-
-During active 3D interaction, Atelier intentionally renders a lower-resolution simplified frame to prioritize latency. When interaction ends, the full-quality renderer returns automatically. Saved data and exports are unaffected.
+See `RELEASE_NOTES_12.1.3.md`, `PERFORMANCE_SMOOTH_INTERACTION_REPORT_12.1.3.md`, and `TEST_REPORT_12.1.3.md`.
