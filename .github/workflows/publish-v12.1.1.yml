@@ -1,0 +1,51 @@
+name: Publish Atelier V12.1.1
+
+on:
+  push:
+    branches:
+      - publish-v12.1.1
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Download, verify, and unpack audited release
+        env:
+          RELEASE_URL: "https://uce70d4447a2b0cd9ac315aedbcf.dl.dropboxusercontent.com/cd/0/get/DH-m9iq8LMvFXiROmMeQp7-dCEEj_6I2HJ1fZ6ii34PoyRY8WDpkaxqJsENyGa5w7zTqc6v1aN6FVYxCWGpd7psMoRPCw7NXq6q9Nf8310wE3AO7y5HSHQ_60-ASluQj6uHnQ0SkRPiTDXsKAMw4MHFMqBIVHHyMjnHWTts9Px6_fg/file?c_luid=39011dda"
+        run: |
+          set -euo pipefail
+          curl --fail --location --silent --show-error "$RELEASE_URL" --output /tmp/atelier-release.zip
+          echo "0543d01d92ce4fdcd9861ceb79bd42f55ae1d03469da8837ce9a381d796b2c2b  /tmp/atelier-release.zip" | sha256sum -c -
+          rm -rf /tmp/atelier-release
+          mkdir -p /tmp/atelier-release
+          unzip -q /tmp/atelier-release.zip -d /tmp/atelier-release
+          SRC="/tmp/atelier-release/Atelier-Space-Studio-12.1.1-Cross-Browser-PWA-RC"
+          echo "be928647bc2ba95a9699e5d8ad4777e145f4abdffc470178bbfbcba48b105c46  $SRC/index.html" | sha256sum -c -
+          test -f "$SRC/sw.js"
+          test -f "$SRC/manifest.webmanifest"
+          test -f "$SRC/icon-192.png"
+          test -f "$SRC/icon-512.png"
+          cp -f "$SRC"/* .
+          touch .nojekyll
+          rm -rf .seed
+          rm -f .github/workflows/publish-v12.1.1.yml
+          rmdir .github/workflows 2>/dev/null || true
+          rmdir .github 2>/dev/null || true
+          echo "be928647bc2ba95a9699e5d8ad4777e145f4abdffc470178bbfbcba48b105c46  index.html" | sha256sum -c -
+
+      - name: Commit exact audited release to staging branch
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish Atelier Space Studio 12.1.1"
+          git push origin HEAD:publish-v12.1.1
