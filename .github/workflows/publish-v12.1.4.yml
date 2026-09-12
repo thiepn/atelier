@@ -1,0 +1,39 @@
+name: Publish Atelier V12.1.4
+
+on:
+  push:
+    branches: [publish-v12.1.4]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: publish-v12.1.4
+          fetch-depth: 0
+      - name: Download and verify exact release
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 2 'https://uceeeddfda73f19f27c91587d275.dl.dropboxusercontent.com/cd/0/get/DIBThTlTO0wIdWB-Yu4vGn2ZMuR3aldNuI4LE8Wa6ekS7lO8TUidvtlcTm2wAZNS_F5-zk4cxCDn8AhI3tEHlg12_siDT3wAsqOw5wlzoE3gvgZjIaVE0jUsojZ2HEpWPiSIqZlh2LDQhqSNHYCwZNZdYi8Ca1lX1odUDWUnVzoOiw/file?c_luid=39011dda' -o /tmp/atelier-release.zip
+          echo '1f593beb4d97e2356e2256375a53ab2f38bb167d40af4aebf32239c108d6cb13  /tmp/atelier-release.zip' | sha256sum -c -
+          rm -rf /tmp/atelier-release
+          mkdir -p /tmp/atelier-release
+          unzip -q /tmp/atelier-release.zip -d /tmp/atelier-release
+          echo '68bc8c8904f4db947f21928b0d08ec4e813b78e7b1a16eb6a651b3d648b8ab2  /tmp/atelier-release/index.html' | sha256sum -c -
+      - name: Replace branch with verified release
+        shell: bash
+        run: |
+          set -euo pipefail
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a /tmp/atelier-release/. .
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git commit -m 'Publish Atelier Space Studio 12.1.4 adaptive profiler'
+          git push origin HEAD:publish-v12.1.4
