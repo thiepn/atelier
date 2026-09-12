@@ -1,0 +1,47 @@
+name: Publish Atelier V12.1.2
+
+on:
+  push:
+    branches: [publish-v12.1.2]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: publish-v12.1.2
+          fetch-depth: 0
+
+      - name: Download verified release ZIP
+        env:
+          RELEASE_URL: "https://uc7cc34bb703f50268af6a28e9de.dl.dropboxusercontent.com/cd/0/get/DH-G_jy6pof3ei7TAra3ZKkhTZsAk2QBeqMgnxJO8sIsy3IQCpyzPVUf5tTedWjxaH_vSuEFGxYOXWiC2m_LC-C75i1mA7dcTAX32sw54VSBd4OpSs-v-cep-Avx3FLWVzJLDEnoMjKvM19fsKqp0rkFJ-hUnQokeF1JSWyQxhxz6g/file?c_luid=39011dda"
+        run: |
+          curl --fail --location --retry 2 "$RELEASE_URL" -o /tmp/atelier.zip
+          echo "aa108b2784eb3accbcc416e2b1e0115c75b9da2952ec84f10f7a9034dfb0ce7b  /tmp/atelier.zip" | sha256sum -c -
+
+      - name: Install and verify V12.1.2
+        run: |
+          rm -f index.html sw.js manifest.webmanifest icon-192.png icon-512.png
+          rm -f RELEASE_NOTES_12.1.1.md CROSS_BROWSER_PWA_REPORT_12.1.1.md TEST_REPORT_12.1.1.md
+          unzip -o /tmp/atelier.zip -d .
+          echo "5d9872c3f2ce358d8d826f4764f065221dadc0eb1f645243835a25bced24212c  index.html" | sha256sum -c -
+          test -f sw.js
+          test -f manifest.webmanifest
+          test -f icon-192.png
+          test -f icon-512.png
+          grep -q "atelier-space-studio-12.1.2" sw.js
+          grep -q "12.1.2" index.html
+          rm -f .github/workflows/publish-v12.1.2.yml
+
+      - name: Commit verified release
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Publish Atelier Space Studio 12.1.2 performance hotfix"
+          git push origin HEAD:publish-v12.1.2
