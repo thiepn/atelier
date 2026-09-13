@@ -11,12 +11,28 @@
     "serviceWorkerSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
     "pwaCache": "atelier-space-studio-13.2.0"
   },
+  "acceptanceToolkit": {
+    "status": "deployed",
+    "commit": "0034db72243532b1028cadb7c512f2ec7db26bc5",
+    "pagesRun": 34781684179,
+    "runnerPath": "/atelier/acceptance/DEVICE_ACCEPTANCE_13.3.0.html",
+    "runnerBlob": "852b64123ee61440eedc063f24a81e8ec560b810",
+    "runtimeBlobUnchanged": "324884caabe3e52963ac3c7a081c627372ccff71"
+  },
   "automatedEvidence": {
     "pass": 458,
     "skip": 2,
     "inheritedApplicationMatrix": "325/325 PASS",
     "touchTargets": "37/37 >= 32 px",
     "webglExport": "PASS"
+  },
+  "toolingEvidence": {
+    "validatorSelfTest": "pass",
+    "negativeGateSelfTest": "pass",
+    "desktopRunnerSmoke": "pass",
+    "mobileTouchRunnerSmoke": "pass",
+    "evidenceRoundTrip": "pass",
+    "partialEvidenceBlocksSignoff": "pass"
   },
   "physicalTargets": [
     {"id":"firefox-desktop","status":"pending"},
