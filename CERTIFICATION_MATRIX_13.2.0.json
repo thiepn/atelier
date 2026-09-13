@@ -1,6 +1,13 @@
 {
   "release": "13.2.0",
-  "status": "local-automated-pass-production-deployment-pending",
+  "status": "production-deployed-github-pages-verified-physical-acceptance-pending",
+  "production": [
+    {"target":"github-pages-deployment","status":"pass","evidence":"GitHub Pages run 34777414838 completed successfully for commit 1151f66e58ff4950d7c8ba265834c59d1a46bf5e."},
+    {"target":"production-release-identity","status":"pass","evidence":"main index.html blob 324884caabe3e52963ac3c7a081c627372ccff71 matches the certified V13.2 artifact."},
+    {"target":"production-static-assets","status":"pass","evidence":"main clean release tree 858762f96799ff6ae522174c5e4bedc701f7df94 contains the certified 13-file deployment set."},
+    {"target":"production-sw-source","status":"pass","evidence":"main sw.js blob cd920b34f76528b0779e87d19c14e01a111841fd matches the certified V13.2 worker."},
+    {"target":"independent-public-origin-http-fetch","status":"pending","reason":"The assistant browsing layer blocked direct safe-open of the GitHub Pages URL; no independent HTTP-content claim is made."}
+  ],
   "automated": [
     {"target":"chromium-desktop","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
     {"target":"chromium-mobile-touch","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
@@ -11,12 +18,6 @@
     {"target":"pwa-update-protocol","status":"pass","evidence":"TEST_PWA_PROTOCOL_13_2.mjs"},
     {"target":"pwa-interrupted-update","status":"pass","evidence":"TEST_PWA_ROLLFORWARD_13_2.mjs"}
   ],
-  "production_pending": [
-    {"target":"github-pages-https","status":"pending"},
-    {"target":"production-release-identity","status":"pending"},
-    {"target":"production-static-assets","status":"pending"},
-    {"target":"production-sw-source","status":"pending"}
-  ],
   "environment_pending": [
     {"target":"firefox-desktop","status":"pending","reason":"Playwright Firefox binary unavailable in current sandbox."},
     {"target":"webkit-linux","status":"pending","reason":"Playwright WebKit binary unavailable in current sandbox."}
@@ -26,6 +27,10 @@
     {"target":"safari-ios-ipados","status":"pending"},
     {"target":"chrome-android-installed-pwa","status":"pending"}
   ],
+  "automated_totals": {"pass":458,"skip":2},
+  "touch_acceptance": {"visible_targets":37,"below_32px":0},
   "project_schema": 10,
-  "pwa_cache": "atelier-space-studio-13.2.0"
+  "pwa_cache": "atelier-space-studio-13.2.0",
+  "production_commit": "1151f66e58ff4950d7c8ba265834c59d1a46bf5e",
+  "production_pages_run": 34777414838
 }
