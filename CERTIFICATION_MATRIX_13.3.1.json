@@ -1,0 +1,54 @@
+{
+  "signoffMilestone": "13.3.1",
+  "acceptanceEvidenceMilestone": "13.3.0",
+  "runtimeRelease": "13.2.0",
+  "status": "evidence-completion-tooling-deployed-final-signoff-blocked",
+  "production": {
+    "url": "https://thiepn.github.io/atelier/",
+    "releaseCommit": "1151f66e58ff4950d7c8ba265834c59d1a46bf5e",
+    "indexSha256": "561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46",
+    "serviceWorkerSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
+    "pwaCache": "atelier-space-studio-13.2.0",
+    "runtimeMutationIn1331": false
+  },
+  "automatedBaseline": {
+    "pass": 458,
+    "skip": 2,
+    "inheritedApplicationMatrix": "325/325 PASS",
+    "touchTargets": "37/37 >= 32 px",
+    "webglExport": "PASS"
+  },
+  "signoffTooling": {
+    "physicalRunner": "acceptance/DEVICE_ACCEPTANCE_13.3.0.html",
+    "signoffCenter": "acceptance/SIGNOFF_CENTER_13.3.1.html",
+    "validator": "acceptance/validate_acceptance.py",
+    "requiredTargets": 5,
+    "evidenceSchema": "atelier-physical-acceptance-evidence-v1",
+    "signoffSchema": "atelier-final-production-signoff-v1",
+    "positiveFiveTargetSelfTest": "pass",
+    "tamperDetection": "pass",
+    "duplicateTargetDetection": "pass",
+    "missingEvidenceBlocksSignoff": "pass",
+    "browserFiveFileUnlock": "pass",
+    "browserTamperedFileBlocks": "pass",
+    "mobileNoHorizontalOverflow": "pass"
+  },
+  "physicalTargets": [
+    {"id":"firefox-desktop","status":"pending"},
+    {"id":"safari-macos","status":"pending"},
+    {"id":"safari-ios-iphone","status":"pending"},
+    {"id":"safari-ipados-ipad","status":"pending"},
+    {"id":"chrome-android-installed-pwa","status":"pending"}
+  ],
+  "evidenceInventory": {
+    "valid": 0,
+    "required": 5,
+    "source": "current conversation",
+    "note": "No real physical-device acceptance JSON files were supplied in this conversation during V13.3.1 implementation."
+  },
+  "finalSignoff": {
+    "state": "blocked",
+    "readyCondition": "SIGNOFF_READY=true with 5/5 distinct valid physical targets",
+    "runtimeMayAdvanceToV14": false
+  }
+}
