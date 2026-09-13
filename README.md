@@ -1,8 +1,8 @@
 # Atelier Space Studio
 
-**Current release: 13.2.0 — Production Deployment & Real-Device Acceptance**
+**Production runtime: 13.2.0 — V13.3 Physical Device Acceptance milestone active**
 
-Atelier is a local-first browser space-planning studio with a static PWA deployment. V13.2 closes the automated production-deployment phase while retaining V10 project compatibility and the full V12 feature set.
+Atelier is a local-first browser space-planning studio with a static PWA deployment. The production runtime remains byte-frozen at 13.2.0 while the V13.3 certification milestone collects real-device acceptance evidence without changing application behavior.
 
 ## Production status
 
@@ -17,6 +17,18 @@ V13.2 is deployed from `main` on GitHub Pages.
 - PWA cache: `atelier-space-studio-13.2.0`
 
 The Pages deployment succeeded for the exact release commit. The assistant browsing environment could not independently fetch the public Pages URL because of its safe-open policy, so no separate HTTP-content verification is claimed.
+
+## V13.3 physical acceptance milestone
+
+V13.3 does **not** change the deployed application runtime. It adds a deterministic physical-device acceptance system around the frozen 13.2.0 production build.
+
+- Acceptance runner: `acceptance/DEVICE_ACCEPTANCE_13.3.0.html`
+- Target contract: `acceptance/required-targets.json`
+- Evidence validator: `acceptance/validate_acceptance.py`
+- Final sign-off state: `FINAL_RELEASE_SIGNOFF_13.3.0.md`
+- V13.3 matrix: `CERTIFICATION_MATRIX_13.3.0.json`
+
+Required physical targets are Firefox Desktop, Safari macOS, Safari iPhone, Safari iPad and Chrome Android Installed PWA. Final sign-off remains blocked until all five evidence files validate against the frozen production hashes. Chromium responsive/device emulation does not satisfy a physical target.
 
 ## Release focus
 

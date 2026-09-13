@@ -1,0 +1,34 @@
+{
+  "acceptanceMilestone": "13.3.0",
+  "runtimeRelease": "13.2.0",
+  "productionUrl": "https://thiepn.github.io/atelier/",
+  "runtimeIndexSha256": "561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46",
+  "runtimeServiceWorkerSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
+  "targets": [
+    {
+      "id": "firefox-desktop",
+      "label": "Firefox Desktop",
+      "requiredTests": ["identity", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "offline-browser", "keyboard", "a11y-smoke"]
+    },
+    {
+      "id": "safari-macos",
+      "label": "Safari macOS",
+      "requiredTests": ["identity", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "offline-browser", "keyboard", "a11y-smoke"]
+    },
+    {
+      "id": "safari-ios-iphone",
+      "label": "Safari iPhone / Home Screen Web App",
+      "requiredTests": ["identity", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "touch", "pwa-install", "offline-pwa", "update-pwa", "a11y-smoke"]
+    },
+    {
+      "id": "safari-ipados-ipad",
+      "label": "Safari iPad / Home Screen Web App",
+      "requiredTests": ["identity", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "touch", "pwa-install", "offline-pwa", "update-pwa", "a11y-smoke"]
+    },
+    {
+      "id": "chrome-android-installed-pwa",
+      "label": "Chrome Android Installed PWA",
+      "requiredTests": ["identity", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "touch", "pwa-install", "offline-pwa", "update-pwa", "a11y-smoke"]
+    }
+  ]
+}

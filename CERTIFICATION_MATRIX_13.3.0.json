@@ -1,0 +1,34 @@
+{
+  "acceptanceMilestone": "13.3.0",
+  "runtimeRelease": "13.2.0",
+  "status": "production-runtime-frozen-physical-signoff-pending",
+  "production": {
+    "url": "https://thiepn.github.io/atelier/",
+    "releaseCommit": "1151f66e58ff4950d7c8ba265834c59d1a46bf5e",
+    "documentationSignoffCommit": "373d7db8221a97c71515341fe63d75bc01c077cd",
+    "pagesDeployment": "pass",
+    "indexSha256": "561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46",
+    "serviceWorkerSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
+    "pwaCache": "atelier-space-studio-13.2.0"
+  },
+  "automatedEvidence": {
+    "pass": 458,
+    "skip": 2,
+    "inheritedApplicationMatrix": "325/325 PASS",
+    "touchTargets": "37/37 >= 32 px",
+    "webglExport": "PASS"
+  },
+  "physicalTargets": [
+    {"id":"firefox-desktop","status":"pending"},
+    {"id":"safari-macos","status":"pending"},
+    {"id":"safari-ios-iphone","status":"pending"},
+    {"id":"safari-ipados-ipad","status":"pending"},
+    {"id":"chrome-android-installed-pwa","status":"pending"}
+  ],
+  "signoff": {
+    "state": "blocked",
+    "reason": "Required physical-device evidence has not been collected in this execution environment.",
+    "validator": "acceptance/validate_acceptance.py",
+    "readyCondition": "SIGNOFF_READY=true"
+  }
+}

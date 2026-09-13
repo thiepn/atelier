@@ -1,0 +1,15 @@
+{
+  "milestone": "13.3.0",
+  "runtimeRelease": "13.2.0",
+  "results": [
+    {"test":"validator-complete-fixture","status":"pass"},
+    {"test":"validator-failed-required-step-blocks","status":"pass"},
+    {"test":"runner-desktop-chromium","status":"pass"},
+    {"test":"runner-mobile-touch-chromium","status":"pass"},
+    {"test":"evidence-fingerprint-roundtrip","status":"pass"},
+    {"test":"partial-evidence-remains-blocked","status":"pass"},
+    {"test":"runner-mobile-no-horizontal-overflow","status":"pass"},
+    {"test":"runner-mobile-controls-min-44px","status":"pass"}
+  ],
+  "physicalAcceptance": "pending-real-devices"
+}
