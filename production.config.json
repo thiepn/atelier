@@ -1,0 +1,73 @@
+{
+  "release": "13.2.0",
+  "projectSchema": {
+    "current": 10,
+    "min": 1,
+    "max": 10
+  },
+  "deployment": {
+    "format": "static-pwa",
+    "singleHtmlArtifact": true,
+    "maxIndexBytes": 2000000
+  },
+  "performanceBudgets": {
+    "interactionP95Ms": 24,
+    "renderCpuP95Ms": 14,
+    "inputP95Ms": 8,
+    "inputLatencyP95Ms": 18,
+    "pickP95Ms": 8,
+    "patchP95Ms": 12,
+    "selectionP95Ms": 8,
+    "sceneRebuildP95Ms": 30
+  },
+  "releaseGates": {
+    "runtimeFaults": 0,
+    "horizontalOverflowPx": 1,
+    "requiredLocalEngine": "chromium",
+    "externalAcceptance": [
+      "firefox",
+      "safari-macos",
+      "safari-ios",
+      "chrome-android"
+    ],
+    "accessibilityBlockingIssues": 0,
+    "requiredPWAShellFiles": 5,
+    "offlineColdStart": true,
+    "serviceWorkerUpdateRecovery": true,
+    "keyboardCriticalPaths": true,
+    "touchTargetMinPx": 32,
+    "touchTargetBlockingIssues": 0,
+    "productionOriginRequired": true,
+    "interruptedUpdateRollback": true,
+    "staleWorkerRecovery": true,
+    "installedPwaExternalAcceptance": true
+  },
+  "certification": {
+    "localAutomated": [
+      "chromium-desktop",
+      "chromium-mobile-touch",
+      "pwa-offline-protocol",
+      "pwa-update-protocol",
+      "pwa-interrupted-update",
+      "keyboard-full-workflow",
+      "accessibility-runtime",
+      "touch-target-runtime"
+    ],
+    "attemptWhenAvailable": [
+      "firefox-desktop",
+      "webkit-linux"
+    ],
+    "productionAutomated": [
+      "github-pages-https",
+      "production-release-identity",
+      "production-static-assets",
+      "production-sw-source"
+    ],
+    "externalPhysical": [
+      "safari-macos",
+      "safari-ios",
+      "chrome-android-installed-pwa"
+    ]
+  },
+  "productionOrigin": "https://thiepn.github.io/atelier/"
+}

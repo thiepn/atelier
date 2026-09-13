@@ -1,63 +1,90 @@
-# Atelier Space Studio 12.1.4
+# Atelier Space Studio
 
-Atelier is a local-first browser space-planning studio with a **1,003-object procedural library**, architecture tools, parametric objects, materials, room intelligence, hierarchical layers, reusable room kits, project templates, and realtime 3D.
+**Current release: 13.2.0 — Production Deployment & Real-Device Acceptance**
 
-V12.1.4 is an **adaptive performance + live-profiler release**. It keeps the V12.1.3 full-resolution interaction path and adds measured, device-specific telemetry so slow machines can be diagnosed from actual frame/input/render timings instead of guessed at from project size.
+Atelier is a local-first browser space-planning studio with a static PWA deployment. V13.2 hardens production deployment, touch accessibility and interrupted-update recovery while retaining V10 project compatibility.
 
-## What changed in 12.1.4
+## Release focus
 
-- **Live interaction profiler** for recent FPS, average/p95 frame timing, render submission time, pointer processing, input latency, picking, object patching, scene rebuilds, selection uploads, dropped-frame estimates, draw calls, triangles and backing-buffer size.
-- **Graphics backend detection** reports the WebGL vendor/renderer string when the browser exposes it, including known software rasterizers such as SwiftShader/llvmpipe.
-- **Adaptive software-WebGL interaction path.** When a known software rasterizer is detected, Atelier keeps full-resolution WebGL but enables interaction-only backface culling and skips the cached shadow texture lookup while moving. Idle rendering and exported output remain unchanged.
-- **No gesture-time canvas resize.** Rotation/dragging keeps the same backing resolution.
-- **No quality change on click.** The motion path still begins only after actual movement.
-- **Animation-frame input coalescing** remains in place so raw high-polling mouse events cannot trigger redundant camera work.
-- **Deferred cutaway rebuilds** remain in place until the gesture ends.
-- **Compatibility renderer override** is available for troubleshooting with `?renderer=software`; `?renderer=webgl` forces WebGL.
-- Diagnostics JSON now includes the live performance snapshot.
+V13 does not expand Atelier horizontally. It hardens the application that already exists: runtime boundaries, deterministic builds, schema/version contracts, performance budgets, crash containment, production diagnostics, and release certification tooling.
 
-## Stress-test result
+### Modular development, static deployment
 
-On intentionally hostile Chromium + SwiftShader WebGL2:
+Atelier remains deployable as a static GitHub Pages PWA with a single self-contained `index.html`, but development source is now split into ordered logical modules under `src/`.
 
-- full-resolution interaction: roughly **35–40 FPS** in the final adaptive test runs;
-- object transform preview: roughly **28 FPS** in the smooth-interaction suite;
-- backing buffer during gesture: **768 × 631, unchanged**;
-- interaction-mode switch: roughly **0.2 ms** in the final run;
-- no runtime JavaScript errors.
+- `src/shell.html` — document shell
+- `src/styles/app.css` — application styles
+- `src/runtime/*.js` — ordered runtime modules
+- `src/modules.json` — deterministic module order
+- `tools/build_single_file.py` — rebuilds the deployable single-file app
+- `tools/extract_source_modules.py` — regenerates modular development sources
 
-These measurements are environment-specific stress-test results, not a guaranteed FPS for every device.
+`python tools/build_single_file.py --verify-index` must reproduce the checked-in `index.html` byte-for-byte.
 
-## Using the profiler
+### Production runtime contract
 
-Open **Advanced → Platform & performance → Performance**. Rotate or drag for a few seconds, then reopen the panel. It reports the actual device/browser timings and graphics backend used for that session.
+V13 centralizes release and compatibility assumptions:
 
-The same snapshot is available to diagnostics through `window.Atelier.getPerformanceTelemetry()` and is included in exported diagnostics JSON.
+- Application: **13.2.0**
+- Project schema: **V10**
+- Accepted schemas: **V1–V10** through the existing strict normalization path
+- PWA cache: `atelier-space-studio-13.2.0`
+- Deploy HTML budget: **2 MB**
+- Active-floor object ceiling: **5,000**
 
-## Compatibility
+No project migration is required.
 
-- Application: **12.1.4**
-- Project schema: **V10**, unchanged
-- Catalog: **1,003 objects**
-- Categories: **36**
-- Project migration required: **No**
+### Crash containment and safe mode
+
+Runtime rendering is split into guarded stages. A failure in a specialist panel or render stage is recorded in diagnostics instead of automatically taking down the entire editor.
+
+If 3D initialization or a critical view stage fails, Atelier can preserve the project and fall back to 2D. The explicit recovery URL is:
+
+`?safe=1`
+
+Safe mode bypasses 3D initialization while retaining project access, recovery, diagnostics, and export tools.
+
+### Production Health
+
+**Advanced → Platform & performance → Production health** exposes:
+
+- release/schema contract
+- runtime fault count and degraded stages
+- performance-budget status
+- boot/runtime health
+- safe-mode state
+- project serialization/preflight status
+
+Production Health can be exported as JSON for release/debugging evidence.
+
+### Performance budgets
+
+V13 converts the V12 profiler into release gates. The runtime tracks interaction, render, input-latency, picking, geometry-patch, selection-upload, and scene-rebuild timings. Startup shader compilation and the first scene build are excluded from interaction-budget failure classification.
+
+### Release tooling
+
+`tools/release_gate.py` verifies the deployable artifact before release, including deterministic rebuild, release/cache identity, manifest/service-worker contract, JavaScript syntax, module inventory, and deployment size.
+
+GitHub CI configuration is included at `.github/workflows/release-gate.yml`.
 
 ## Validation
 
-Executed against the exact V12.1.4 source:
+- Inherited V12/V11 regression matrix: **325/325 PASS**
+- V13 production-foundation checks: **27/27 PASS**
+- V13.2 production deployment release gate: pending final run
+- V13.2 runtime/browser/keyboard/touch certification: pending final run
+- PWA worker lifecycle/protocol: **15/15 PASS**
+- Available-engine browser matrix: **11 PASS / 2 SKIP**
+- Aggregate automated result: **428 PASS / 2 SKIP**
+- Separate full-quality WebGL PNG export: **PASS**
 
-- Professional Studio: **26/26**
-- final-audit regressions: **20/20**
-- V12.1 workflow/usability: **32/32**
-- browser capability/fallback: **17/17**
-- V11.9 project management: **18/18**
-- V11.9 lifecycle/data safety: **7/7**
-- V11.8 visual regression: **19/19**
-- forced WebGL2/GPU: **7/7**
-- V12.1.4 smooth interaction: **18/18**
-- service-worker lifecycle contract: **11/11**
-- V12.1.4 live profiler: **18/18**
+Firefox and WebKit are **not claimed as certified** in this environment because their executable browser binaries are unavailable and browser-engine downloads are blocked by sandbox network policy. Real served-origin installed-PWA integration is also pending because this environment blocks navigation to HTTP/HTTPS test origins. Physical Safari/iOS/Android PWA acceptance remains external release work.
 
-**193/193 selected checks passed.** The suites overlap and should not be interpreted as 193 independent product requirements.
+See:
 
-See `RELEASE_NOTES_12.1.4.md`, `PERFORMANCE_ADAPTIVE_PROFILER_REPORT_12.1.4.md`, and `TEST_REPORT_12.1.4.md`.
+- `RELEASE_NOTES_13.2.0.md`
+- `CROSS_ENGINE_PWA_CERTIFICATION_13.2.0.md`
+- `CERTIFICATION_MATRIX_13.2.0.json`
+- `EXTERNAL_ACCEPTANCE_13.2.0.md`
+- `TEST_REPORT_13.2.0.md`
+- `ARCHITECTURE_V13.md`

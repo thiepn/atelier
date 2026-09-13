@@ -1,0 +1,31 @@
+{
+  "release": "13.2.0",
+  "status": "local-automated-pass-production-deployment-pending",
+  "automated": [
+    {"target":"chromium-desktop","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
+    {"target":"chromium-mobile-touch","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
+    {"target":"keyboard-full-workflow","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
+    {"target":"accessibility-runtime","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
+    {"target":"touch-target-runtime","status":"pass","evidence":"TEST_RELEASE_ACCEPTANCE_13_2.py"},
+    {"target":"pwa-offline-protocol","status":"pass","evidence":"TEST_PWA_PROTOCOL_13_2.mjs"},
+    {"target":"pwa-update-protocol","status":"pass","evidence":"TEST_PWA_PROTOCOL_13_2.mjs"},
+    {"target":"pwa-interrupted-update","status":"pass","evidence":"TEST_PWA_ROLLFORWARD_13_2.mjs"}
+  ],
+  "production_pending": [
+    {"target":"github-pages-https","status":"pending"},
+    {"target":"production-release-identity","status":"pending"},
+    {"target":"production-static-assets","status":"pending"},
+    {"target":"production-sw-source","status":"pending"}
+  ],
+  "environment_pending": [
+    {"target":"firefox-desktop","status":"pending","reason":"Playwright Firefox binary unavailable in current sandbox."},
+    {"target":"webkit-linux","status":"pending","reason":"Playwright WebKit binary unavailable in current sandbox."}
+  ],
+  "physical_device_pending": [
+    {"target":"safari-macos","status":"pending"},
+    {"target":"safari-ios-ipados","status":"pending"},
+    {"target":"chrome-android-installed-pwa","status":"pending"}
+  ],
+  "project_schema": 10,
+  "pwa_cache": "atelier-space-studio-13.2.0"
+}
