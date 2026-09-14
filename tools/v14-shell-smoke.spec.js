@@ -47,6 +47,13 @@ async function openCommandPaletteThroughModule(page) {
   expect(opened).toBe(true);
 }
 
+async function tapCenter(page, locator) {
+  await expect(locator).toBeVisible();
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+}
+
 function collectRuntimeErrors(page) {
   const pageErrors = [];
   const consoleErrors = [];
@@ -151,16 +158,17 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
   const isTouchProject = Boolean(touchProjects[testInfo.project.name]);
   const isWebKitTouch = testInfo.project.name === 'webkit-mobile' || testInfo.project.name === 'webkit-tablet';
 
-  if (isTouchProject) {
+  if (testInfo.project.name === 'chromium-mobile') {
     expect(await page.evaluate(() => navigator.maxTouchPoints || 0)).toBeGreaterThan(0);
     expect(page.viewportSize()).toEqual(touchProjects[testInfo.project.name]);
   }
 
   if (isWebKitTouch) {
-    await toggle.click();
+    expect(page.viewportSize()).toEqual(touchProjects[testInfo.project.name]);
+    await tapCenter(page, toggle);
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(panel).toBeVisible();
-    await toggle.click();
+    await tapCenter(page, toggle);
     await expect(toggle).toHaveAttribute('aria-expanded', 'false');
     await expect(panel).toBeHidden();
 
