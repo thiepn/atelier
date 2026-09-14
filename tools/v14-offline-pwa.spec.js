@@ -9,7 +9,8 @@ async function waitForV14Shell(page) {
     globalThis.AtelierV14Shell?.commands &&
     globalThis.AtelierV14Shell?.files &&
     globalThis.AtelierV14Shell?.icons &&
-    globalThis.AtelierV14Shell?.text
+    globalThis.AtelierV14Shell?.text &&
+    globalThis.AtelierV14Shell?.units
   ));
 }
 
@@ -75,7 +76,7 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
   const v14Resources = await page.evaluate(() => performance.getEntriesByType('resource')
     .map((entry) => entry.name)
     .filter((name) => name.includes('/v14/')));
-  expect(v14Resources.length).toBeGreaterThanOrEqual(7);
+  expect(v14Resources.length).toBeGreaterThanOrEqual(8);
 
   await context.setOffline(true);
   try {
@@ -94,11 +95,28 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
     await expect(page.locator('[data-v14-field="serviceWorker"]')).toHaveText('controlled');
     await expect(page.locator('[data-v14-field="baseline"]')).toHaveText('Atelier 13.2.0');
 
-    const shellVersions = await page.evaluate(() => ({
-      icons: globalThis.AtelierV14Shell.icons.version,
-      text: globalThis.AtelierV14Shell.text.version,
+    const shellState = await page.evaluate(() => ({
+      versions: {
+        icons: globalThis.AtelierV14Shell.icons.version,
+        text: globalThis.AtelierV14Shell.text.version,
+        units: globalThis.AtelierV14Shell.units.version,
+      },
+      dimensions: {
+        metric: globalThis.AtelierV14Shell.units.formatDimension(2.5, 'm'),
+        imperial: globalThis.AtelierV14Shell.units.formatDimension(0.3048, 'ft-in'),
+      },
     }));
-    expect(shellVersions).toEqual({ icons: '14.0.0-dev.9', text: '14.0.0-dev.10' });
+    expect(shellState).toEqual({
+      versions: {
+        icons: '14.0.0-dev.9',
+        text: '14.0.0-dev.10',
+        units: '14.0.0-dev.12',
+      },
+      dimensions: {
+        metric: '2.50 m',
+        imperial: '1′ 0″',
+      },
+    });
 
     const offlineStatus = await serviceWorkerStatus(page);
     expect(offlineStatus.ready).toBe(true);
