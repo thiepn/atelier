@@ -13,7 +13,7 @@
     "automaticPromotionAllowed": false
   },
   "staging": {
-    "status": "pending-publication",
+    "requirement": "live-https-verification-before-physical-evidence",
     "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/app/",
     "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/acceptance.html?v=14.0.0-dev.19",
     "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/staging-status.json",
@@ -26,15 +26,17 @@
     "mustServeExactRcServiceWorkerHash": true,
     "mustExposeRcCacheIdentity": true,
     "productionRootRuntimeMustRemainImmutable": true,
-    "productionOriginUseBlockedUntilPriorReleaseSignoff": true
+    "productionOriginUseBlockedUntilPriorReleaseSignoff": true,
+    "operationalStateSource": "CERTIFICATION_MATRIX_14.0.0-rc.json"
   },
   "physicalAcceptance": {
-    "status": "pending-real-evidence",
+    "requirement": "five-valid-real-device-evidence-files",
     "plan": "acceptance/v14-rc-required-targets.json",
     "validator": "acceptance/validate_v14_rc_acceptance.py",
     "requiredTargets": 5,
     "syntheticFixturesMayValidateToolingOnly": true,
-    "syntheticFixturesMaySatisfyPhysicalGate": false
+    "syntheticFixturesMaySatisfyPhysicalGate": false,
+    "operationalStateSource": "CERTIFICATION_MATRIX_14.0.0-rc.json"
   },
   "productionCutoverEvidence": [
     "prior-release-final-signoff",
@@ -57,11 +59,9 @@
     "serviceWorkerSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
     "cache": "atelier-space-studio-13.2.0"
   },
-  "currentState": {
-    "priorReleaseSignoff": "blocked",
-    "rcPhysicalEvidence": "0/5",
-    "stagingOrigin": "pending-publication",
-    "productionCutover": "blocked",
-    "rollbackCertification": "not-run"
+  "statePolicy": {
+    "operationalStateMustBeRecordedInCertificationMatrix": true,
+    "productionCutoverDefault": "blocked",
+    "rollbackCertificationDefault": "not-run"
   }
 }
