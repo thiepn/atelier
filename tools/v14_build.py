@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import re
@@ -21,6 +22,11 @@ STYLE_END = b"<!-- ATELIER_V14_STYLES:END -->"
 MODULE_BEGIN = b"<!-- ATELIER_V14_MODULES:BEGIN -->"
 MODULE_END = b"<!-- ATELIER_V14_MODULES:END -->"
 SAFE_PATH = re.compile(r"^[A-Za-z0-9._/-]+$")
+SAFE_CACHE_PREFIX = re.compile(r"^[A-Za-z0-9._-]+$")
+SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+CACHE_DECL_RE = re.compile(rb"const CACHE='[^'\r\n]+';")
+RELEASE_DECL_RE = re.compile(rb"const RELEASE='[^'\r\n]+';")
+CORE_DECL_RE = re.compile(rb"const CORE=\[[^\r\n]*\];")
 
 
 def sha256(data: bytes) -> str:
@@ -46,6 +52,34 @@ def validate_relative_asset(value: str, expected_suffix: str | None = None) -> s
     return normalized
 
 
+def normalize_service_worker(value: Any, passthrough: list[str]) -> dict[str, str] | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        raise ValueError("serviceWorker must be an object")
+    source = validate_relative_asset(value.get("source"), ".js")
+    output = validate_relative_asset(value.get("output", source), ".js")
+    expected = value.get("expectedSourceSha256")
+    if not isinstance(expected, str) or not SHA256_HEX.fullmatch(expected):
+        raise ValueError("serviceWorker.expectedSourceSha256 must be a lowercase SHA-256 hex digest")
+    baseline_prefix = value.get("baselineCachePrefix", "atelier-space-studio-")
+    cache_prefix = value.get("cachePrefix", "atelier-v14-dev-")
+    for label, prefix in (("baselineCachePrefix", baseline_prefix), ("cachePrefix", cache_prefix)):
+        if not isinstance(prefix, str) or not prefix or not SAFE_CACHE_PREFIX.fullmatch(prefix):
+            raise ValueError(f"Unsafe serviceWorker.{label}: {prefix!r}")
+    if baseline_prefix == cache_prefix:
+        raise ValueError("V14 service-worker cache prefix must be isolated from the baseline prefix")
+    if output in passthrough:
+        raise ValueError(f"Generated service worker output must not also be passthrough: {output}")
+    return {
+        "source": source,
+        "output": output,
+        "expectedSourceSha256": expected,
+        "baselineCachePrefix": baseline_prefix,
+        "cachePrefix": cache_prefix,
+    }
+
+
 def load_module_manifest(path: Path) -> dict[str, Any]:
     data = load_json(path)
     if data.get("schema") != MODULE_SCHEMA:
@@ -60,7 +94,15 @@ def load_module_manifest(path: Path) -> dict[str, Any]:
     for label, values in (("style", styles), ("module", modules), ("patch", patches), ("passthrough", passthrough)):
         if len(values) != len(set(values)):
             raise ValueError(f"Duplicate V14 {label} asset in manifest")
-    return {**data, "styles": styles, "modules": modules, "patches": patches, "passthrough": passthrough}
+    service_worker = normalize_service_worker(data.get("serviceWorker"), passthrough)
+    return {
+        **data,
+        "styles": styles,
+        "modules": modules,
+        "patches": patches,
+        "passthrough": passthrough,
+        "serviceWorker": service_worker,
+    }
 
 
 def apply_patch_file(data: bytes, patch_path: Path, relative: str) -> tuple[bytes, dict[str, Any]]:
@@ -148,7 +190,6 @@ def inject_modules(baseline: bytes, styles: list[str], modules: list[str]) -> by
     module_lines.append(MODULE_END)
     module_block = b"\n" + b"\n".join(module_lines) + b"\n"
 
-    # Insert at the later anchor first so the original head offset remains valid.
     output = baseline[:body_at] + module_block + baseline[body_at:]
     output = output[:head_at] + style_block + output[head_at:]
     return output
@@ -183,6 +224,76 @@ def copy_passthrough(repo_root: Path, output_root: Path, relative: str) -> dict[
         "output": destination.relative_to(output_root).as_posix(),
         "bytes": len(payload),
         "sha256": sha256(payload),
+    }
+
+
+def build_service_worker(
+    repo_root: Path,
+    output_root: Path,
+    version: str,
+    styles: list[str],
+    modules: list[str],
+    config: dict[str, str] | None,
+) -> dict[str, Any] | None:
+    if config is None:
+        return None
+
+    source_path = repo_root / Path(*PurePosixPath(config["source"]).parts)
+    if not source_path.is_file():
+        raise ValueError(f"Missing service-worker source: {source_path}")
+    source = source_path.read_bytes()
+    actual_source_hash = sha256(source)
+    if actual_source_hash != config["expectedSourceSha256"]:
+        raise ValueError(
+            f"Service-worker source hash mismatch: expected {config['expectedSourceSha256']}, got {actual_source_hash}"
+        )
+
+    cache_match = CACHE_DECL_RE.findall(source)
+    release_match = RELEASE_DECL_RE.findall(source)
+    core_match = CORE_DECL_RE.findall(source)
+    if len(cache_match) != 1 or len(release_match) != 1 or len(core_match) != 1:
+        raise ValueError("Service-worker source must contain exactly one CACHE, RELEASE and CORE declaration")
+
+    core_literal = core_match[0][len(b"const CORE="):-1].decode("utf-8")
+    try:
+        core = ast.literal_eval(core_literal)
+    except (SyntaxError, ValueError) as exc:
+        raise ValueError("Unable to parse service-worker CORE list") from exc
+    if not isinstance(core, list) or not all(isinstance(item, str) for item in core):
+        raise ValueError("Service-worker CORE must be a flat string list")
+
+    for path in [*styles, *modules]:
+        asset = f"./v14/{path}"
+        if asset not in core:
+            core.append(asset)
+
+    cache_name = f"{config['cachePrefix']}{version}"
+    output = CACHE_DECL_RE.sub(f"const CACHE='{cache_name}';".encode("utf-8"), source, count=1)
+    output = RELEASE_DECL_RE.sub(f"const RELEASE='{version}';".encode("utf-8"), output, count=1)
+    core_js = "const CORE=" + json.dumps(core, separators=(",", ":")) + ";"
+    output = CORE_DECL_RE.sub(core_js.encode("utf-8"), output, count=1)
+
+    baseline_token = f"k.startsWith('{config['baselineCachePrefix']}')".encode("utf-8")
+    isolated_token = f"k.startsWith('{config['cachePrefix']}')".encode("utf-8")
+    prefix_occurrences = output.count(baseline_token)
+    if prefix_occurrences < 1:
+        raise ValueError("Service-worker stale-cache prefix guard was not found")
+    output = output.replace(baseline_token, isolated_token)
+
+    destination = output_root / Path(*PurePosixPath(config["output"]).parts)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(output)
+    return {
+        "source": config["source"],
+        "output": config["output"],
+        "sourceSha256": actual_source_hash,
+        "outputSha256": sha256(output),
+        "release": version,
+        "cache": cache_name,
+        "cachePrefix": config["cachePrefix"],
+        "baselineCachePrefix": config["baselineCachePrefix"],
+        "stalePrefixReplacements": prefix_occurrences,
+        "core": core,
     }
 
 
@@ -221,6 +332,15 @@ def build(repo_root: Path, manifest_path: Path, output_dir: Path, force: bool = 
     output_index = inject_modules(patched_baseline, module_manifest["styles"], module_manifest["modules"])
     (output_dir / "index.html").write_bytes(output_index)
 
+    service_worker = build_service_worker(
+        repo_root,
+        output_dir,
+        module_manifest["version"],
+        module_manifest["styles"],
+        module_manifest["modules"],
+        module_manifest["serviceWorker"],
+    )
+
     build_manifest = {
         "schema": BUILD_SCHEMA,
         "version": module_manifest["version"],
@@ -244,6 +364,7 @@ def build(repo_root: Path, manifest_path: Path, output_dir: Path, force: bool = 
         "modules": module_manifest["modules"],
         "assets": assets,
         "passthrough": passthrough,
+        "serviceWorker": service_worker,
     }
     (output_dir / "v14-build-manifest.json").write_text(json.dumps(build_manifest, indent=2) + "\n", "utf-8")
     return build_manifest
@@ -270,7 +391,8 @@ def main() -> int:
             f"version={result['version']} "
             f"index_sha256={result['artifact']['indexSha256']} "
             f"patches={len(result['patches'])} "
-            f"assets={len(result['assets'])}"
+            f"assets={len(result['assets'])} "
+            f"offline_core={len(result['serviceWorker']['core']) if result['serviceWorker'] else 0}"
         )
         return 0
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
