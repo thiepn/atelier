@@ -1,7 +1,7 @@
 const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.V14_SMOKE_URL || 'http://127.0.0.1:4173/';
-const V14_RELEASE = '14.0.0-dev.14';
+const V14_RELEASE = '14.0.0-dev.15';
 const V14_CACHE = `atelier-v14-dev-${V14_RELEASE}`;
 const BASELINE_CACHE = 'atelier-space-studio-13.2.0';
 const STALE_V14_CACHE = 'atelier-v14-dev-stale-probe';
