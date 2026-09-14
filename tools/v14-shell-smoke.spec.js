@@ -9,7 +9,8 @@ async function waitForV14Shell(page) {
     globalThis.AtelierV14Shell?.commands &&
     globalThis.AtelierV14Shell?.files &&
     globalThis.AtelierV14Shell?.icons &&
-    globalThis.AtelierV14Shell?.text
+    globalThis.AtelierV14Shell?.text &&
+    globalThis.AtelierV14Shell?.units
   ));
 }
 
@@ -119,6 +120,26 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
     xml: '&lt;tag a=&quot;1&quot;&gt;&apos;&amp;&apos;&lt;/tag&gt;',
   });
 
+  const unitProbe = await page.evaluate(() => {
+    const format = globalThis.AtelierV14Shell.units.formatDimension;
+    return {
+      metres: format(1.234, 'm'),
+      feet: format(1, 'ft'),
+      inches: format(1, 'in'),
+      centimetres: format(1.2, 'cm'),
+      millimetres: format(1.2345, 'mm'),
+      feetInches: format(1, 'ft-in'),
+    };
+  });
+  expect(unitProbe).toEqual({
+    metres: '1.23 m',
+    feet: '3.28 ft',
+    inches: '39.37 in',
+    centimetres: '120.00 cm',
+    millimetres: '1235 mm',
+    feetInches: '3′ 3.375″',
+  });
+
   const versions = await page.evaluate(() => ({
     notifications: globalThis.AtelierV14Shell.notifications.version,
     dialogs: globalThis.AtelierV14Shell.dialogs.version,
@@ -126,6 +147,7 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
     files: globalThis.AtelierV14Shell.files.version,
     icons: globalThis.AtelierV14Shell.icons.version,
     text: globalThis.AtelierV14Shell.text.version,
+    units: globalThis.AtelierV14Shell.units.version,
   }));
   expect(versions).toEqual({
     notifications: '14.0.0-dev.3',
@@ -134,6 +156,7 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
     files: '14.0.0-dev.5',
     icons: '14.0.0-dev.9',
     text: '14.0.0-dev.10',
+    units: '14.0.0-dev.12',
   });
 
   expect(pageErrors, `page errors: ${pageErrors.join('\n')}`).toEqual([]);
