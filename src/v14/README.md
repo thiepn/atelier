@@ -4,7 +4,7 @@ This directory is the home for authored V14 code.
 
 ## Current checkpoint
 
-**14.0.0-dev.9** is the current V14 development artifact. It is isolated from production and is not a V13.3.1 production certification result.
+**14.0.0-dev.10** is the current V14 development artifact. It is isolated from production and is not a V13.3.1 production certification result.
 
 ## Build
 
@@ -23,6 +23,7 @@ The builder verifies the frozen baseline, applies exact occurrence-checked bridg
 - `shell/commands.js` — command-palette opening, search and result rendering.
 - `shell/files.js` — browser downloads and safe filename normalization.
 - `shell/icons.js` — SVG icon serialization using the locked legacy icon registry supplied through the bridge.
+- `shell/text.js` — deterministic HTML/SVG/XML text escaping.
 - `dev-status/` — isolated V14 development diagnostics.
 
 Exact bridges live under `patches/` for each migrated legacy helper.
@@ -34,7 +35,7 @@ The V14 workflow currently performs:
 1. source-tool unit tests;
 2. overlay-build/patch-engine unit tests;
 3. JavaScript syntax checks for every V14 module and browser-test file;
-4. independent behavior tests for notifications, dialogs, commands, files and icons;
+4. independent behavior tests for notifications, dialogs, commands, files, icons and text escaping;
 5. exact 13.2.0 baseline lock verification;
 6. byte-for-byte source round-trip verification;
 7. generated development artifact and bridge validation;
@@ -55,7 +56,8 @@ V14 owns post-bootstrap generic shell behavior for:
 - modal/dialog DOM behavior;
 - command-palette presentation/search;
 - browser file delivery/naming;
-- SVG icon serialization.
+- SVG icon serialization;
+- generic HTML/SVG/XML text escaping.
 
 The legacy runtime still owns:
 
@@ -64,7 +66,7 @@ The legacy runtime still owns:
 - project persistence;
 - backup semantics;
 - project schema;
-- geometry;
+- geometry/math helpers;
 - catalog/application state;
 - rendering.
 
@@ -80,4 +82,4 @@ The legacy runtime still owns:
 
 ## Next milestone
 
-Dev.10 should target another **pure, security-relevant presentation helper** rather than application state. The preferred candidate is HTML/text escaping, because it has a narrow deterministic contract, is broadly reused by shell presentation code, and can be migrated with an exact fallback without touching projects, persistence, geometry or rendering.
+After dev.10, the obvious shell-only helpers are largely exhausted. **Dev.11 should be an architecture/dependency inventory before any deeper extraction.** It should classify remaining legacy boundaries by state ownership, call surface, browser dependence and regression risk, then select the next migration only when it has a clear payoff. Persistence, project schema, geometry and rendering remain excluded by default.
