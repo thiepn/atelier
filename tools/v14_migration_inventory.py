@@ -7,6 +7,7 @@ import argparse
 import json
 import re
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 SCHEMA = "atelier-v14-migration-inventory-v1"
 ALLOWED_PHASE = {"migration", "stabilization"}
@@ -19,6 +20,8 @@ ALLOWED_PAYOFF = {"low", "medium", "high"}
 ALLOWED_DECISION = {"selected-next", "completed", "hold", "defer", "blocked"}
 BROWSER_ORDER = {"none": 0, "low": 1, "medium": 2, "high": 3}
 VERSION_RE = re.compile(r"^14\.0\.0-dev\.(\d+)$")
+PRODUCTION_URL = "https://thiepn.github.io/atelier/"
+STAGING_BASE = "v14-rc-staging/"
 
 
 class InventoryError(ValueError):
@@ -41,6 +44,16 @@ def unique_string_list(value, field: str) -> list[str]:
     require(all(isinstance(x, str) and x for x in value), f"{field} entries must be strings")
     require(len(value) == len(set(value)), f"{field} contains duplicates")
     return value
+
+
+def https_url(value: str, field: str, *, allow_query: bool = False) -> object:
+    require(isinstance(value, str) and value, f"{field} is required")
+    parsed = urlparse(value)
+    require(parsed.scheme == "https" and bool(parsed.netloc), f"{field} must use HTTPS")
+    require(parsed.username is None and parsed.password is None, f"{field} must not include credentials")
+    require(not parsed.fragment, f"{field} must not include a fragment")
+    require(allow_query or not parsed.query, f"{field} must not include a query")
+    return parsed
 
 
 def validate_inventory(data: dict) -> dict:
@@ -69,6 +82,7 @@ def validate_inventory(data: dict) -> dict:
     frozen_patches: list[str] = []
     worker_policy: dict | None = None
     rc_policy: dict | None = None
+    staging_policy: dict | None = None
     if phase == "stabilization":
         require(selection_required is False, "stabilization phase requires selectionRequired=false")
         require(isinstance(stabilization, dict), "stabilization policy is required")
@@ -84,6 +98,8 @@ def validate_inventory(data: dict) -> dict:
         require(worker_policy.get("cachePrefix") == "atelier-v14-dev-", "unexpected stabilization worker cachePrefix")
         require(worker_policy.get("preserveBaselineCaches") is True, "stabilization worker must preserve baseline caches")
         require(worker_policy.get("precacheV14Assets") is True, "stabilization worker must precache V14 assets")
+        require(worker_policy.get("ownCacheLookupOnly") is True, "stabilization worker must use own-cache-only reads")
+        require(worker_policy.get("crossNamespaceReadsForbidden") is True, "stabilization worker must forbid cross-namespace reads")
 
         rc_policy = stabilization.get("releaseCandidatePackaging")
         require(isinstance(rc_policy, dict), "stabilization.releaseCandidatePackaging policy is required")
@@ -98,6 +114,38 @@ def validate_inventory(data: dict) -> dict:
         require(rc_policy.get("cutoverPlan") == "acceptance/v14-rc-cutover-plan.json", "unexpected RC cutover plan")
         require(rc_policy.get("allowPhysicalEvidenceBeforePriorSignoff") is True, "RC physical evidence must be collectable before prior signoff")
         require(rc_policy.get("allowPromotionBeforePriorSignoff") is False, "RC promotion must remain blocked before prior signoff")
+
+        staging_policy = stabilization.get("staging")
+        require(isinstance(staging_policy, dict), "stabilization.staging policy is required")
+        require(staging_policy.get("enabled") is True, "staging must be enabled")
+        require(staging_policy.get("publishBranch") == "main", "staging publishBranch must be main")
+        require(staging_policy.get("publishBasePath") == STAGING_BASE, "unexpected staging publishBasePath")
+        require(staging_policy.get("versionedCandidatePath") is True, "staging must use a versioned candidate path")
+        require(staging_policy.get("preservePriorCandidates") is True, "staging must preserve prior candidates")
+        expected_path = f"{STAGING_BASE}{version}/"
+        require(staging_policy.get("candidatePath") == expected_path, "staging candidatePath must exactly match the inventory version")
+        require(staging_policy.get("productionUrl") == PRODUCTION_URL, "unexpected staging production URL")
+        require(staging_policy.get("productionRootRuntimeImmutable") is True, "staging must preserve the production root runtime")
+        require(staging_policy.get("serviceWorkerScopeIsolatedByPath") is True, "staging worker scope must be isolated by path")
+        require(staging_policy.get("parentProductionWorkerMayControlFirstNavigation") is True, "staging must model parent-worker first-navigation control")
+        require(staging_policy.get("runnerCacheBustRequired") is True, "staging runner cache bust is required")
+        require(staging_policy.get("liveHttpsVerificationRequired") is True, "staging live HTTPS verification is required")
+        require(staging_policy.get("physicalEvidenceRunner") == "acceptance.html", "unexpected staging evidence runner")
+
+        candidate_url = staging_policy.get("candidateUrl")
+        runner_url = staging_policy.get("runnerUrl")
+        status_url = staging_policy.get("statusUrl")
+        candidate_parsed = https_url(candidate_url, "staging.candidateUrl")
+        runner_parsed = https_url(runner_url, "staging.runnerUrl", allow_query=True)
+        status_parsed = https_url(status_url, "staging.statusUrl")
+        expected_web_path = f"/atelier/{expected_path}"
+        require(candidate_parsed.path == expected_web_path + "app/", "staging candidateUrl path must match candidatePath/app/")
+        require(runner_parsed.path == expected_web_path + "acceptance.html", "staging runnerUrl path must match candidatePath/acceptance.html")
+        query = parse_qs(runner_parsed.query)
+        require(query.get("v") == [version], "staging runnerUrl must include exactly v=<version>")
+        require(status_parsed.path == expected_web_path + "staging-status.json", "staging statusUrl path must match candidatePath/staging-status.json")
+        require(candidate_parsed.netloc == runner_parsed.netloc == status_parsed.netloc, "staging URLs must share one host")
+        require(candidate_url != PRODUCTION_URL, "staging candidate URL must differ from production")
     else:
         require(stabilization is None, "migration phase must not carry a stabilization freeze")
 
@@ -179,6 +227,7 @@ def validate_inventory(data: dict) -> dict:
         "frozenPatches": frozen_patches,
         "serviceWorker": worker_policy,
         "releaseCandidatePackaging": rc_policy,
+        "staging": staging_policy,
         "boundaryCount": len(boundaries),
         "blockedCount": sum(1 for b in boundaries if b["decision"] == "blocked"),
         "deferredCount": sum(1 for b in boundaries if b["decision"] in {"defer", "hold"}),
@@ -198,6 +247,7 @@ def main() -> None:
         raise SystemExit(1)
 
     rc = result["releaseCandidatePackaging"] or {}
+    staging = result["staging"] or {}
     print(
         "V14_MIGRATION_INVENTORY_OK=true "
         f"version={result['version']} "
@@ -208,8 +258,9 @@ def main() -> None:
         f"frozen_modules={len(result['frozenModules'])} "
         f"frozen_patches={len(result['frozenPatches'])} "
         f"worker_mode={(result['serviceWorker'] or {}).get('mode', 'none')} "
+        f"own_cache_only={str((result['serviceWorker'] or {}).get('ownCacheLookupOnly', False)).lower()} "
         f"rc_packaging={str(rc.get('enabled', False)).lower()} "
-        f"rc_physical_plan={rc.get('physicalAcceptancePlan', 'none')} "
+        f"staging_versioned={str(staging.get('versionedCandidatePath', False)).lower()} "
         f"boundaries={result['boundaryCount']} "
         f"blocked={result['blockedCount']} "
         f"deferred={result['deferredCount']}"
