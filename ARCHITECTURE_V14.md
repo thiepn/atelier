@@ -2,285 +2,325 @@
 
 ## Status
 
-V14 is an **uncertified development cycle** on branch `v14-development`. The current validated checkpoint is **14.0.0-dev.12**. Production remains Atelier 13.2.0 on `main`; V13.3.1 physical-device sign-off is a separate unresolved production gate and is not implied by V14 development.
+V14 is an **uncertified development cycle** on branch `v14-development`.
 
-## Core architecture rule
+Current validated checkpoint: **14.0.0-dev.14**.
 
-V14 incrementally extracts low-state, testable boundaries from the locked Atelier 13.2.0 monolith while preserving an exact fallback path. It is not a big-bang rewrite.
+Production remains Atelier **13.2.0** on `main`. V13.3.1 physical-device sign-off remains a separate unresolved production gate.
 
-The following remain excluded by default from opportunistic migration:
+## Architecture objective
 
-- project persistence;
-- project schema;
-- backup semantics;
-- geometry and renderer ownership;
-- catalog/application state.
+V14 incrementally extracts small, deterministic, low-state boundaries from the locked Atelier 13.2.0 monolith while preserving exact legacy fallback behavior.
 
-Those boundaries may move only after an explicit dependency/risk review and a concrete V14 requirement.
+It is not a big-bang rewrite, and stabilization now explicitly prevents further ownership migration without a new architecture decision.
 
-## Milestone 1 — Reproducible source boundary
+### Excluded by default
 
-`14.0.0-dev.1` made the development-source contract concrete.
+The following remain legacy-owned unless an explicit dependency/risk review authorizes otherwise:
 
-Components:
+- project persistence and backups;
+- project schema and validation;
+- geometry/precision engines;
+- 2D/3D rendering;
+- catalog/application state;
+- broad project/orchestration helpers.
 
-- `src/source.lock.json` pins the exact 13.2.0 runtime baseline;
-- `tools/v14_source.py` losslessly extracts inline HTML/CSS/JS/data segments and rebuilds them byte-for-byte;
-- `tools/test_v14_source.py` verifies round-trip integrity, tamper rejection, external-script handling and runtime-lock enforcement;
-- `src/generated/` is a reproducible local source view;
-- `src/v14/` is the authored V14 module workspace.
+## Source and build model
 
-Invariant: extracting and rebuilding the frozen baseline must reproduce `index.html` exactly.
-
-## Milestone 2 — Deterministic module overlay
-
-`14.0.0-dev.2` added a separate V14 artifact rather than modifying the root runtime.
-
-Components:
-
-- `src/v14/manifest.json` — ordered styles, modules, exact bridges and passthrough assets;
-- `tools/v14_build.py` — baseline verification, path validation, exact patching, deterministic injection and build-manifest generation;
-- `tools/test_v14_build.py` — deterministic output, path traversal, marker, lock and exact-patch tests;
-- `src/v14/dev-status/` — isolated development diagnostics;
-- `.github/workflows/v14-source-roundtrip.yml` — CI gate.
-
-Build flow:
+The V14 development line starts from the exact production 13.2.0 runtime and creates a separate artifact.
 
 ```text
-index.html (locked Atelier 13.2.0)
+index.html (locked 13.2.0 baseline)
         │
-        ├── source lock verification
-        ├── byte-for-byte source round trip
+        ├── src/source.lock.json verification
+        ├── lossless extraction/rebuild check
         │
         ▼
 tools/v14_build.py + src/v14/manifest.json
         │
         ├── exact occurrence-checked bridges
         ├── ordered V14 styles/modules
-        ├── passthrough runtime assets
+        ├── isolated V14 development service worker
+        ├── declared passthrough assets
         │
         ▼
-separate V14 development artifact
+V14 development artifact
         │
-        ├── v14-build-manifest.json
-        └── browser/offline integration gates
+        ├── index.html
+        ├── sw.js
+        ├── v14/*
+        └── v14-build-manifest.json
 ```
 
-The root `index.html` is never rewritten by the V14 overlay builder.
+The root production `index.html` and `sw.js` are source inputs only. The builder does not rewrite them.
 
 ## Exact bridge policy
 
-`atelier-v14-exact-patch-v1` is the controlled migration boundary for functions hidden inside the legacy IIFE.
+`atelier-v14-exact-patch-v1` is the migration boundary for helpers hidden inside the legacy IIFE.
 
-1. Every bridge declares exact source text and required occurrence count.
-2. Missing or duplicate matches fail the build instead of guessing.
-3. Patch source, find string and replacement are hash-bound in the build manifest.
-4. Legacy behavior remains available as fallback.
-5. Modules fail safely when required adapters or DOM surfaces are unavailable.
-6. IIFE-owned state is passed through narrow adapters rather than exposed globally.
-7. A migration must not change project schema, persistence or geometry merely to simplify extraction.
+1. Every bridge specifies exact source text and required occurrence count.
+2. Missing or duplicate matches fail the build.
+3. Patch inputs and replacements are SHA-256 recorded in the build manifest.
+4. Legacy function bodies remain available as fallback.
+5. IIFE-owned state remains private and is exposed only through narrow adapters where required.
+6. A bridge may not be added during stabilization without explicitly leaving the frozen architecture phase.
 
-## Milestone 3 — Shell notifications
+## Milestones
 
-`14.0.0-dev.3` moved accessibility announcements, toasts and save/status messaging into `src/v14/shell/notifications.js` while preserving exact legacy fallback.
+### dev.1 — Reproducible source boundary
+
+Added `src/source.lock.json`, `tools/v14_source.py`, source-tool tests and a byte-for-byte extraction/rebuild invariant.
+
+### dev.2 — Deterministic module overlay
+
+Added the V14 module manifest, overlay builder, exact patch engine, build manifest and development diagnostics.
+
+### dev.3 — Shell notifications
+
+Moved accessibility announcements, toasts and save/status presentation into `shell/notifications.js`.
 
 Validated workflow: `34793861206`.
 
-## Milestone 4 — Command palette
+### dev.4 — Command palette
 
-`14.0.0-dev.4` moved command-palette opening, search and result rendering into `src/v14/shell/commands.js` while retaining legacy command execution and `data-command` contracts.
+Moved command-palette opening/search/result presentation into `shell/commands.js`. Legacy command execution remains unchanged.
 
 Validated workflow: `34794079679`.
 
-## Milestone 5 — Browser file utilities
+### dev.5 — Browser file utilities
 
-`14.0.0-dev.5` moved browser download delivery and safe filename normalization into `src/v14/shell/files.js`, preserving Blob/MIME/download/revocation and filename behavior.
+Moved generic download delivery and safe filename normalization into `shell/files.js`.
 
 Validated workflow: `34794229852`.
 
-## Milestone 6 — Dialog shell
+### dev.6 — Dialog shell
 
-`14.0.0-dev.6` moved modal rendering, focus management and confirmation composition into `src/v14/shell/dialogs.js`. Application-owned state remains private to the legacy IIFE and is exposed only through narrow adapters.
+Moved modal DOM behavior, focus handling and confirmation composition into `shell/dialogs.js` through narrow legacy-state adapters.
 
 Validated workflow: `34794378836`.
 
-## Milestone 7 — Real-browser shell integration
+### dev.7 — Real-browser shell integration
 
-`14.0.0-dev.7` added generated-artifact Chromium integration testing and made CI manifest-driven and concurrency-safe. The test drives actual legacy keyboard/action paths through the V14 bridges instead of validating modules only in isolation.
+Added generated-artifact Chromium integration and made CI manifest-driven/concurrency-safe.
 
 Validated workflow: `34794583346`.
 
-## Milestone 8 — Cross-browser, responsive & offline integration
+### dev.8 — Cross-browser, responsive and offline integration
 
-`14.0.0-dev.8` hardened the migration layer before further extraction.
+Added four Playwright projects:
 
-Browser matrix:
+1. Chromium desktop — 1280×800
+2. Chromium mobile/touch — 390×844
+3. Firefox desktop — 1280×800
+4. WebKit desktop — 1280×800
 
-1. Chromium desktop — 1280×800;
-2. Chromium mobile/touch — 390×844;
-3. Firefox desktop — 1280×800;
-4. WebKit desktop — 1280×800.
-
-Integrated requirements include:
-
-- V14 shell-service registration;
-- <= 1 px document horizontal overflow;
-- touch-capability verification in the mobile project;
-- diagnostics keyboard semantics;
-- `Ctrl+K` legacy shortcut -> V14 command/dialog path;
-- dialog `aria-modal`, accessible search naming and autofocus;
-- native Escape cancellation and deterministic focus restoration;
-- preservation of existing command action contracts;
-- zero uncaught page and console errors.
-
-A separate Chromium gate verifies a real inherited-service-worker warm load -> offline reload cycle and requires the generated V14 overlay to return while the 13.2.0 core cache remains complete.
+The integrated gate verifies responsive overflow, keyboard paths, native dialog Escape, focus restoration, accessible command search, service registration and zero uncaught page/console errors.
 
 Validated workflow: `34815078492`.
 
-## Milestone 9 — Modular SVG icon renderer
+### dev.9 — SVG icon renderer
 
-`14.0.0-dev.9` extracted pure SVG icon serialization into `src/v14/shell/icons.js`.
-
-The icon path registry deliberately remains in the locked legacy runtime. The exact bridge passes that registry into the V14 renderer, so rendering ownership moves without duplicating icon data or changing bootstrap behavior.
-
-Preserved contract:
-
-- requested width/height;
-- `0 0 24 24` viewBox;
-- current-color stroke;
-- stroke width/caps/joins;
-- `aria-hidden="true"`;
-- unknown icon fallback to the legacy `cube` path.
-
-Validation covers isolated rendering behavior, exact bridge integrity, the four-browser matrix, command-palette SVG presence and controlled offline restoration.
+Moved pure SVG serialization into `shell/icons.js`. The immutable path registry remains legacy-owned and is passed into the renderer by the bridge.
 
 Validated workflow: `34815530617`.
 
-## Milestone 10 — Modular text escaping service
+### dev.10 — Text escaping
 
-`14.0.0-dev.10` centralizes repeated deterministic escaping in `src/v14/shell/text.js`.
-
-Two explicit contracts are retained:
-
-- `escapeHtml(value)` — `&`, `<`, `>`, `"`, `'` with legacy apostrophe encoding `&#39;`;
-- `escapeXml(value)` — same core entities with XML apostrophe encoding `&apos;`.
-
-The service preserves null/undefined -> empty string conversion, `String(...)` coercion and the legacy single-pass behavior.
-
-Four exact legacy helpers are bridged:
-
-1. generic `esc` -> HTML escaping;
-2. `svgEsc` -> HTML escaping;
-3. plan `xml` helper -> HTML-style escaping to preserve its existing `&#39;` output;
-4. dedicated `escXML` -> XML escaping.
-
-The bridge patches only unique helper prefixes. The original `.replace(...)` expressions remain physically present as fallback branches, reducing duplicated exact-source text in the patch specification while preserving the locked implementation.
-
-Dev.10 validation includes isolated text behavior, all four exact occurrence checks, deterministic artifact generation, Chromium desktop/mobile, Firefox, WebKit, direct HTML/XML browser probes, controlled offline restoration and artifact upload.
+Centralized repeated HTML/SVG/XML escaping in `shell/text.js` while preserving the existing `&#39;` versus `&apos;` contracts through four exact fallback bridges.
 
 Validated workflow: `34816085941`.
 
-## Milestone 11 — Migration & dependency inventory
+### dev.11 — Migration/dependency inventory
 
-`14.0.0-dev.11` stopped automatic helper extraction and introduced a machine-validated boundary inventory.
+Added `src/v14/migration-inventory.json`, its validator and policy tests.
 
-Components:
-
-- `src/v14/migration-inventory.json` — ownership/risk/testability decisions for the remaining legacy boundaries;
-- `tools/v14_migration_inventory.py` — fail-closed policy validator;
-- `tools/test_v14_migration_inventory.py` — regression tests for duplicate IDs, excluded ownership, selection cardinality and mutation constraints;
-- CI synchronization between inventory version, module-manifest version and generated-artifact version.
-
-Selection policy requires an authorized migration to be low state risk, non-mutating, highly testable, at most low browser coupling and compatible with an explicit legacy fallback.
-
-The inventory blocks persistence, project schema, geometry and rendering from opportunistic extraction. It selected only `dimension-formatting` for dev.12.
+The inventory makes migration decisions machine-readable and blocks opportunistic persistence/schema/geometry/rendering extraction.
 
 Validated workflow: `34816530041`.
 
-## Milestone 12 — Dimension formatting boundary
+### dev.12 — Dimension formatting
 
-`14.0.0-dev.12` implements the only migration authorized by dev.11.
-
-`src/v14/shell/units.js` owns deterministic display formatting previously provided by legacy `fmtDim`.
+Moved pure display formatting from legacy `fmtDim` into `shell/units.js`.
 
 Preserved formats:
 
-- `m` — two decimals;
-- `ft` — two decimals;
-- `cm` — two decimals;
-- `mm` — integer display;
-- `in` — two decimals;
-- `ft-in` — nearest one-eighth inch using the existing prime notation;
-- unknown unit strings — factor fallback `1` and supplied suffix preserved.
+- metres: two decimals;
+- decimal feet: two decimals;
+- centimetres: two decimals;
+- millimetres: integer display;
+- inches: two decimals;
+- feet + inches: nearest one-eighth inch;
+- unknown suffixes: legacy factor fallback.
 
-`src/v14/patches/units-bridge.json` replaces only the unique `fmtDim` function prefix. The complete original formatter body remains immediately after the V14 delegation as fallback.
-
-The migration does **not** move or alter:
-
-- project unit state;
-- stored numeric values;
-- numeric editing/conversion;
-- geometry;
-- project schema;
-- persistence;
-- plan/3D renderer ownership.
-
-Validation includes isolated formatter behavior, exact bridge occurrence, all four browser projects, direct metric/imperial browser probes and a controlled offline reload that requires the units service to register and execute from the cached development artifact.
-
-After successful dev.12 validation, the inventory marks `dimension-formatting` completed, sets `selectionRequired: false`, and contains no `selected-next` boundary. This is an explicit extraction stop rather than an invitation to choose another helper implicitly.
+No project unit state, numeric editing, geometry or renderer ownership moved.
 
 Validated workflow: `34871518856`.
 
-## Development diagnostics
+### dev.13 — Stabilization freeze
 
-`src/v14/dev-status/` displays network state, display mode, service-worker controller state, touch-point count, viewport information and the 13.2.0 baseline identity. It is namespaced, keyboard accessible and explicitly development-only.
+V14 deliberately stopped extracting legacy ownership.
 
-It does not read or mutate project data, persistence, backups, geometry, catalog state or renderer state.
+`migration-inventory.json` now enforces:
 
-## Current modular ownership boundary
+- `phase: stabilization`;
+- `architectureFrozen: true`;
+- `allowNewLegacyBridges: false`;
+- `allowProductionCutover: false`;
+- exact frozen module list;
+- exact frozen patch list;
+- zero `selected-next` migration boundaries.
 
-As of dev.12, V14 owns post-bootstrap generic shell/helper behavior for:
+CI compares the manifest to the frozen module/patch surface, so accidental architecture drift fails the build.
 
-1. notifications/status;
-2. modal/dialog DOM behavior;
-3. command-palette presentation/search;
-4. browser file delivery/naming;
-5. SVG icon serialization;
-6. generic HTML/SVG/XML text escaping;
-7. dimension display formatting.
+Validated workflow: `34872208603`.
 
-Legacy ownership remains for:
+### dev.14 — Isolated V14 offline shell
 
-- command execution;
-- icon path registry data;
-- project persistence and backups;
-- project schema and validation;
-- geometry and broadly shared project math;
-- project identity generation;
-- catalog and application state;
-- project unit state and numeric editing;
-- exchange/export domain semantics;
-- 2D/3D rendering.
+Dev.14 fixes a release-packaging weakness without moving any application ownership.
 
-## Current validation boundary
+Previously the generated V14 artifact passed through the 13.2.0 production worker unchanged. The builder already had a deterministic worker-generation path; dev.14 activates it.
 
-V14 has four enforced layers:
+The manifest now supplies a hash-locked service-worker source contract:
 
-1. **Deterministic source/build validation** — locked baseline, lossless source round trip, exact bridge checks and hashed development artifact.
-2. **Migration policy validation** — structured ownership/risk inventory and fail-closed selection rules.
-3. **Isolated module validation** — behavior suites for each migrated shell/helper service.
-4. **Integrated runtime validation** — Chromium desktop/mobile, Firefox, WebKit and controlled offline Chromium execution against the generated artifact.
+- source: production `sw.js`;
+- expected source SHA-256: `e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236`;
+- source cache prefix: `atelier-space-studio-`;
+- development cache prefix: `atelier-v14-dev-`.
 
-These layers validate the V14 development branch only. They do not replace V13.3.1 physical-device production acceptance.
+The generated worker:
 
-## Next V14 milestone
+1. identifies itself as the current V14 development version;
+2. uses `atelier-v14-dev-<version>`;
+3. appends every V14 style/module to the offline core;
+4. cleans stale caches only within `atelier-v14-dev-`;
+5. leaves the production/baseline `atelier-space-studio-*` namespace untouched.
 
-There is intentionally **no selected dev.13 extraction**.
+CI verifies the generated worker source structure, syntax, release/cache identity, core list and prefix replacement.
 
-Before dev.13 changes another legacy ownership boundary, V14 must make an explicit direction decision. The valid paths are:
+The real Chromium offline test additionally creates:
 
-1. identify a concrete product/reliability requirement that justifies another migration and revise the inventory accordingly;
-2. enter stabilization/release-readiness work without moving more stateful code;
-3. prepare a future cutover plan while keeping the validated dev.12 architecture fixed.
+- a baseline `atelier-space-studio-13.2.0` cache;
+- a stale `atelier-v14-dev-stale-probe` cache.
 
-Until that decision is recorded, persistence, schema, geometry, rendering, catalog/application state and broad project/orchestration helpers remain legacy-owned.
+It then invokes worker stale-cache cleanup and requires the stale V14 cache to be deleted while the baseline production cache survives. The artifact is subsequently reloaded fully offline and all V14 modules must return.
+
+Validated workflow: `34872824160`.
+
+## Current module surface
+
+The stabilization freeze contains eight modules:
+
+1. `shell/notifications.js`
+2. `shell/dialogs.js`
+3. `shell/commands.js`
+4. `shell/files.js`
+5. `shell/icons.js`
+6. `shell/text.js`
+7. `shell/units.js`
+8. `dev-status/dev-status.js`
+
+Seven exact bridge files correspond to the migrated legacy helpers. `dev-status` is development-only and does not bridge legacy application behavior.
+
+## Current ownership boundary
+
+V14 owns only generic post-bootstrap shell/helper presentation and development packaging:
+
+- notifications/status;
+- modal/focus presentation;
+- command search/results presentation;
+- browser file delivery/naming;
+- SVG icon serialization;
+- HTML/SVG/XML escaping;
+- dimension display formatting;
+- V14 development artifact/offline packaging.
+
+Legacy 13.2.0 remains authoritative for:
+
+- project persistence/backups;
+- project schema and normalization;
+- geometry and precision;
+- 2D/3D rendering;
+- catalog/application state;
+- command/action execution;
+- project identity;
+- numeric editing and stored unit state;
+- exchange/export domain semantics.
+
+## Validation layers
+
+V14 currently has four enforced validation layers.
+
+### 1. Deterministic source/build validation
+
+- exact baseline hash lock;
+- byte-for-byte source round trip;
+- exact bridge matching;
+- hashed V14 asset/build manifest;
+- hash-locked service-worker source transformation.
+
+### 2. Architecture policy validation
+
+- structured dependency/migration inventory;
+- blocked/deferred ownership classes;
+- stabilization freeze;
+- no new bridge or selected migration;
+- production cutover disallowed.
+
+### 3. Isolated behavior validation
+
+Independent behavior suites cover:
+
+- notifications;
+- dialogs;
+- commands;
+- browser files;
+- icons;
+- text escaping;
+- dimension formatting;
+- service-worker build transformation.
+
+### 4. Integrated runtime validation
+
+Generated artifacts run in:
+
+- Chromium desktop;
+- Chromium mobile/touch;
+- Firefox desktop;
+- WebKit desktop;
+- controlled Chromium offline mode.
+
+Integrated tests cover responsive overflow, keyboard/focus/accessibility paths, direct modular helper probes, offline restoration and V14/baseline cache isolation.
+
+## Release-readiness audit
+
+Dev.14 is a stable **development** checkpoint, not a release candidate.
+
+### Resolved development concerns
+
+- deterministic source reconstruction;
+- exact bridge safety;
+- architecture drift prevention;
+- multi-browser shell compatibility;
+- responsive/mobile smoke coverage;
+- development offline shell completeness;
+- V14 cache namespace isolation from production.
+
+### Hard cutover blockers
+
+1. `CERTIFICATION_MATRIX_13.3.1.json` currently records `runtimeMayAdvanceToV14: false` and 0/5 required physical targets.
+2. `v14-build-manifest.json` intentionally emits `developmentOnly: true`.
+3. `dev-status/` is still included and visibly labels the runtime `V14 DEV`.
+4. `production.config.json` still identifies release 13.2.0 and the 13.2 production certification contract.
+5. No V14-specific physical-device acceptance has been completed.
+6. No V14 production-origin deployment/cutover verification has been completed.
+7. V14 production update/rollback certification has not yet been defined for a release candidate.
+
+No automated development test may silently convert these blockers into a production claim.
+
+## Next architecture decision
+
+Do **not** resume stateful code extraction.
+
+The next meaningful V14 work should be release-candidate preparation only after its prerequisites are explicit. That work should separate a production candidate from the development artifact, remove development-only diagnostics, define production release/cache identity, and create V14-specific production/physical acceptance gates.
+
+Until those gates are designed and satisfied, `allowProductionCutover` remains `false` and production stays on Atelier 13.2.0.
