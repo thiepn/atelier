@@ -206,17 +206,43 @@ jobs:
           npm install --no-save --no-package-lock @playwright/test@1.55.0
           npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run development browser matrix and offline smoke
-        env:
-          V14_SMOKE_URL: http://127.0.0.1:4173/
+      - name: Start development test server
         run: |
-          python -m http.server 4173 --directory v14-dist >/tmp/atelier-v14-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          for attempt in {1..20}; do curl --fail --silent http://127.0.0.1:4173/ >/dev/null && break || sleep 1; done
-          npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --reporter=line --workers=1
-          npx playwright test v14-offline-pwa.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
-          npx playwright test v14-cache-isolation.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
+          nohup python -m http.server 4173 --directory v14-dist >/tmp/atelier-v14-http.log 2>&1 &
+          for attempt in {1..20}; do curl --fail --silent http://127.0.0.1:4173/ >/dev/null && exit 0 || sleep 1; done
+          exit 1
+
+      - name: Browser smoke — Chromium desktop
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
+
+      - name: Browser smoke — Chromium mobile touch
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --project=chromium-mobile --reporter=line --workers=1
+
+      - name: Browser smoke — Firefox desktop
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --project=firefox-desktop --reporter=line --workers=1
+
+      - name: Browser smoke — WebKit desktop
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --project=webkit-desktop --reporter=line --workers=1
+
+      - name: Browser smoke — WebKit phone touch
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --project=webkit-mobile --reporter=line --workers=1
+
+      - name: Browser smoke — WebKit tablet touch
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --project=webkit-tablet --reporter=line --workers=1
+
+      - name: Development offline PWA smoke
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-offline-pwa.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
+
+      - name: Development cross-cache poison regression
+        env: { V14_SMOKE_URL: 'http://127.0.0.1:4173/' }
+        run: npx playwright test v14-cache-isolation.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
 
       - name: Run stripped RC Chromium, offline and cache-isolation smoke
         env:
