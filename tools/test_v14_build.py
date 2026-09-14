@@ -8,8 +8,9 @@ import v14_build
 
 
 class V14BuildTests(unittest.TestCase):
-    def fixture(self, root: Path, baseline: bytes = b"<html><head></head><body><main>Atelier</main></body></html>"):
+    def fixture(self, root: Path, baseline: bytes = b"<html><head></head><body><script>function legacy(){return 1;}</script><main>Atelier</main></body></html>"):
         (root / "src/v14/dev-status").mkdir(parents=True)
+        (root / "src/v14/patches").mkdir(parents=True)
         (root / "index.html").write_bytes(baseline)
         (root / "src/source.lock.json").write_text(json.dumps({
             "schema": "atelier-v14-source-lock-v1",
@@ -22,14 +23,26 @@ class V14BuildTests(unittest.TestCase):
         (root / "asset.txt").write_text("asset\n", "utf-8")
         manifest = {
             "schema": "atelier-v14-module-manifest-v1",
-            "version": "14.0.0-dev.2",
+            "version": "14.0.0-dev.3",
             "styles": ["dev-status/dev-status.css"],
             "modules": ["dev-status/dev-status.js"],
+            "patches": [],
             "passthrough": ["asset.txt"],
         }
         manifest_path = root / "src/v14/manifest.json"
         manifest_path.write_text(json.dumps(manifest), "utf-8")
         return manifest_path
+
+    def add_patch(self, manifest: Path, *, find="function legacy(){return 1;}", replace="function legacy(){return 2;}", expected=1):
+        patch = manifest.parent / "patches/test.json"
+        patch.write_text(json.dumps({
+            "schema": "atelier-v14-exact-patch-v1",
+            "id": "test-bridge",
+            "changes": [{"id": "legacy", "find": find, "replace": replace, "expectedOccurrences": expected}],
+        }), "utf-8")
+        data = json.loads(manifest.read_text("utf-8"))
+        data["patches"] = ["patches/test.json"]
+        manifest.write_text(json.dumps(data), "utf-8")
 
     def test_deterministic_build_and_injection(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -43,6 +56,26 @@ class V14BuildTests(unittest.TestCase):
             self.assertIn('src="v14/dev-status/dev-status.js"', html)
             self.assertEqual((root / "out-a/v14/dev-status/dev-status.js").read_text("utf-8"), "console.log('v14');\n")
             self.assertEqual((root / "out-a/asset.txt").read_text("utf-8"), "asset\n")
+
+    def test_exact_patch_applied_and_recorded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            self.add_patch(manifest)
+            result = v14_build.build(root, manifest, root / "out")
+            html = (root / "out/index.html").read_text("utf-8")
+            self.assertNotIn("function legacy(){return 1;}", html)
+            self.assertIn("function legacy(){return 2;}", html)
+            self.assertEqual(result["patches"][0]["id"], "test-bridge")
+            self.assertEqual(result["patches"][0]["changes"][0]["occurrences"], 1)
+
+    def test_patch_occurrence_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            self.add_patch(manifest, find="missing()", replace="replacement()")
+            with self.assertRaises(ValueError):
+                v14_build.build(root, manifest, root / "out")
 
     def test_unsafe_asset_path_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
