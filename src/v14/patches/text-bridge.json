@@ -6,26 +6,26 @@
     {
       "id": "html-escape-bridge",
       "expectedOccurrences": 1,
-      "find": "const esc = value => String(value ?? '').replace(/[&<>\\\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));",
-      "replace": "const esc = value => {const service=globalThis.AtelierV14Shell?.text;if(service?.escapeHtml)return service.escapeHtml(value);return String(value ?? '').replace(/[&<>\\\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));};"
+      "find": "const esc = value => String(value ?? '')",
+      "replace": "const esc = value => globalThis.AtelierV14Shell?.text?.escapeHtml ? globalThis.AtelierV14Shell.text.escapeHtml(value) : String(value ?? '')"
     },
     {
       "id": "svg-escape-bridge",
       "expectedOccurrences": 1,
-      "find": "function svgEsc(s){return String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));}",
-      "replace": "function svgEsc(s){const service=globalThis.AtelierV14Shell?.text;if(service?.escapeHtml)return service.escapeHtml(s);return String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));}"
+      "find": "function svgEsc(s){return String(s??'')",
+      "replace": "function svgEsc(s){return globalThis.AtelierV14Shell?.text?.escapeHtml ? globalThis.AtelierV14Shell.text.escapeHtml(s) : String(s??'')"
     },
     {
       "id": "plan-xml-escape-bridge",
       "expectedOccurrences": 1,
-      "find": "const xml=s=>String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));",
-      "replace": "const xml=s=>{const service=globalThis.AtelierV14Shell?.text;if(service?.escapeHtml)return service.escapeHtml(s);return String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));};"
+      "find": "const xml=s=>String(s??'')",
+      "replace": "const xml=s=>globalThis.AtelierV14Shell?.text?.escapeHtml ? globalThis.AtelierV14Shell.text.escapeHtml(s) : String(s??'')"
     },
     {
       "id": "xml-escape-bridge",
       "expectedOccurrences": 1,
-      "find": "const escXML=s=>String(s??'').replace(/[<>&\\\"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','\\\"':'&quot;',\"'\":'&apos;'}[c]));",
-      "replace": "const escXML=s=>{const service=globalThis.AtelierV14Shell?.text;if(service?.escapeXml)return service.escapeXml(s);return String(s??'').replace(/[<>&\\\"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','\\\"':'&quot;',\"'\":'&apos;'}[c]));};"
+      "find": "const escXML=s=>String(s??'')",
+      "replace": "const escXML=s=>globalThis.AtelierV14Shell?.text?.escapeXml ? globalThis.AtelierV14Shell.text.escapeXml(s) : String(s??'')"
     }
   ]
 }
