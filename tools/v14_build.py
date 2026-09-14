@@ -52,7 +52,7 @@ def validate_relative_asset(value: str, expected_suffix: str | None = None) -> s
     return normalized
 
 
-def normalize_service_worker(value: Any, passthrough: list[str]) -> dict[str, str] | None:
+def normalize_service_worker(value: Any, passthrough: list[str]) -> dict[str, Any] | None:
     if value is None:
         return None
     if not isinstance(value, dict):
@@ -69,6 +69,8 @@ def normalize_service_worker(value: Any, passthrough: list[str]) -> dict[str, st
             raise ValueError(f"Unsafe serviceWorker.{label}: {prefix!r}")
     if baseline_prefix == cache_prefix:
         raise ValueError("V14 service-worker cache prefix must be isolated from the baseline prefix")
+    if value.get("ownCacheLookupOnly") is not True:
+        raise ValueError("serviceWorker.ownCacheLookupOnly must be true")
     if output in passthrough:
         raise ValueError(f"Generated service worker output must not also be passthrough: {output}")
     return {
@@ -77,6 +79,7 @@ def normalize_service_worker(value: Any, passthrough: list[str]) -> dict[str, st
         "expectedSourceSha256": expected,
         "baselineCachePrefix": baseline_prefix,
         "cachePrefix": cache_prefix,
+        "ownCacheLookupOnly": True,
     }
 
 
@@ -233,7 +236,7 @@ def build_service_worker(
     version: str,
     styles: list[str],
     modules: list[str],
-    config: dict[str, str] | None,
+    config: dict[str, Any] | None,
 ) -> dict[str, Any] | None:
     if config is None:
         return None
@@ -280,6 +283,27 @@ def build_service_worker(
         raise ValueError("Service-worker stale-cache prefix guard was not found")
     output = output.replace(baseline_token, isolated_token)
 
+    cache_read_replacements = 0
+    request_lookup = b"const cached=await caches.match(event.request);"
+    if output.count(request_lookup) != 1:
+        raise ValueError("Service-worker request cache lookup boundary changed unexpectedly")
+    output = output.replace(
+        request_lookup,
+        b"const cache=await caches.open(CACHE);\n   const cached=await cache.match(event.request);",
+        1,
+    )
+    cache_read_replacements += 1
+    for old, new in (
+        (b"caches.match('./index.html')", b"cache.match('./index.html')"),
+        (b"caches.match('./')", b"cache.match('./')"),
+    ):
+        if output.count(old) != 1:
+            raise ValueError("Service-worker navigation fallback cache lookup boundary changed unexpectedly")
+        output = output.replace(old, new, 1)
+        cache_read_replacements += 1
+    if b"caches.match(" in output:
+        raise ValueError("Generated V14 service worker still contains cross-cache cache reads")
+
     destination = output_root / Path(*PurePosixPath(config["output"]).parts)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_bytes(output)
@@ -293,6 +317,8 @@ def build_service_worker(
         "cachePrefix": config["cachePrefix"],
         "baselineCachePrefix": config["baselineCachePrefix"],
         "stalePrefixReplacements": prefix_occurrences,
+        "ownCacheLookupOnly": True,
+        "cacheLookupIsolationReplacements": cache_read_replacements,
         "core": core,
     }
 
