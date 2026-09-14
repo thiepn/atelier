@@ -25,7 +25,7 @@ if (!document.getElementById(ROOT_ID)) {
 
   const note = document.createElement('p');
   note.className = 'v14-note';
-  note.textContent = '14.0.0-dev.2 overlay on the locked Atelier 13.2.0 baseline.';
+  note.textContent = 'V14 development overlay on the locked Atelier 13.2.0 baseline.';
 
   const list = document.createElement('dl');
   const fields = new Map();
