@@ -1,11 +1,15 @@
 {
   "schema": "atelier-v14-module-manifest-v1",
-  "version": "14.0.0-dev.2",
+  "version": "14.0.0-dev.3",
   "styles": [
     "dev-status/dev-status.css"
   ],
   "modules": [
+    "shell/notifications.js",
     "dev-status/dev-status.js"
+  ],
+  "patches": [
+    "patches/notifications-bridge.json"
   ],
   "passthrough": [
     ".nojekyll",
