@@ -27,15 +27,15 @@ The V13 architecture described a deterministic `src/` + `tools/` development mod
 
 ## Milestone 2 — Deterministic module overlay
 
-V14 now has a second build layer that can add modular development code without editing the locked baseline.
+V14 adds a second build layer that can add modular development code without editing the locked baseline.
 
 ### Components
 
-- `src/v14/manifest.json` — ordered V14 styles, JavaScript modules and passthrough assets.
-- `tools/v14_build.py` — verifies the baseline lock, validates module paths, injects V14 assets at deterministic HTML anchors and emits a separate development artifact.
-- `tools/test_v14_build.py` — regression tests for deterministic output, unsafe paths, duplicate markers, lock mismatches and output replacement rules.
-- `src/v14/dev-status/` — first isolated module, used to prove the module boundary without touching project state.
-- `.github/workflows/v14-source-roundtrip.yml` — verifies both the lossless source boundary and the real V14 development artifact in CI.
+- `src/v14/manifest.json` — ordered V14 styles, JavaScript modules, exact patches and passthrough assets.
+- `tools/v14_build.py` — verifies the baseline lock, validates paths, applies audited exact patches, injects V14 assets at deterministic HTML anchors and emits a separate development artifact.
+- `tools/test_v14_build.py` — regression tests for deterministic output, unsafe paths, duplicate markers, lock mismatches, exact-patch behavior and output replacement rules.
+- `src/v14/dev-status/` — isolated development diagnostics module.
+- `.github/workflows/v14-source-roundtrip.yml` — verifies the source boundary and the real V14 development artifact in CI.
 
 ### Build flow
 
@@ -43,13 +43,12 @@ V14 now has a second build layer that can add modular development code without e
 index.html (locked 13.2.0 baseline)
         │
         ├── source.lock verification
-        │
         ├── lossless source round-trip tests
         │
         ▼
 tools/v14_build.py + src/v14/manifest.json
         │
-        ├── validate module paths/assets
+        ├── apply exact, occurrence-checked bridge patches
         ├── inject styles before </head>
         ├── inject modules before </body>
         ├── preserve declared runtime assets
@@ -57,17 +56,73 @@ tools/v14_build.py + src/v14/manifest.json
         ▼
 separate V14 development artifact
         │
-        └── v14-build-manifest.json with hashes
+        └── v14-build-manifest.json with baseline, patch and asset hashes
 ```
 
-The root `index.html` is not rewritten by the V14 overlay builder.
+The root `index.html` is never rewritten by the V14 overlay builder.
 
-### Development diagnostics module
+## Exact bridge policy
 
-The first module is intentionally low risk. It displays network state, display mode, service-worker control state, touch-point count, viewport information and the 13.2.0 baseline identity. It is namespaced under `atelier-v14-devtools`, keyboard accessible, and explicitly labels itself as development-only.
+V14 modules cannot directly replace functions hidden inside the legacy IIFE. `atelier-v14-exact-patch-v1` provides a controlled migration boundary:
+
+1. Every source bridge is a complete exact-string replacement.
+2. Every bridge declares its required occurrence count.
+3. A missing or duplicate match fails the build instead of guessing.
+4. Patch source, find string and replacement are SHA-256 recorded in the build manifest.
+5. Bridged legacy functions retain their original implementation as a fallback.
+6. The module must return an explicit failure signal when it cannot safely handle a call, allowing the fallback to execute.
+7. Project schema, persistence and geometry are not changed merely to modularize shell behavior.
+
+## Milestone 3 — Shell notifications
+
+`14.0.0-dev.3` is the first real legacy-shell migration.
+
+### Module
+
+`src/v14/shell/notifications.js` owns post-bootstrap:
+
+- accessibility announcements;
+- toast display and timeout behavior;
+- save/status text;
+- error announcements.
+
+### Bridge
+
+`src/v14/patches/notifications-bridge.json` delegates legacy `announce`, `toast` and `status` calls to `AtelierV14Shell.notifications` when available. Their original bodies remain boot-time fallback.
+
+### Validation
+
+The notification service has an independent Node behavior test and CI verifies all three bridge points against the real locked baseline. Dev.3 completed successfully in workflow run `34793861206`.
+
+## Milestone 4 — Command palette
+
+`14.0.0-dev.4` moves command-palette presentation/search logic out of the monolith while deliberately leaving command execution unchanged.
+
+### Module
+
+`src/v14/shell/commands.js` owns:
+
+- command-palette opening;
+- command-label filtering;
+- catalog-object search;
+- the existing 24-object result cap;
+- result markup and empty state;
+- command-search autofocus.
+
+### Bridge
+
+`src/v14/patches/commands-bridge.json` delegates `commandsDialog` and `renderCommands` after module bootstrap. Existing `data-command` and `data-command-place` attributes remain unchanged, so the legacy action dispatcher continues to execute commands.
+
+### Validation
+
+The command service has an independent behavior test. CI verifies both exact command bridges plus both shell service suites against the real baseline. Dev.4 completed successfully in workflow run `34794079679`.
+
+## Development diagnostics
+
+`src/v14/dev-status/` displays network state, display mode, service-worker control state, touch-point count, viewport information and the 13.2.0 baseline identity. It is namespaced under `atelier-v14-devtools`, keyboard accessible, and explicitly labels itself as development-only.
 
 It does not read or mutate project data, persistence, backups, geometry, catalog state or the renderer.
 
 ## Next V14 milestone
 
-Milestone 3 should use the now-tested module boundary for the first **real application-shell extraction or replacement**. Candidate code must be low-risk, independently testable and outside core project persistence/geometry. The preferred next target is a shell-level interaction such as command/help infrastructure, non-project notifications/status handling, or another isolated application-shell service that can be introduced alongside the legacy implementation before cutover.
+Milestone 5 should continue extracting a **pure or shell-level utility with no project-schema impact**. The preferred next boundary is file delivery/naming (`downloadFile` and `safeName`): it is centralized, independently testable, used across export/backup workflows, and can retain exact legacy fallback while removing another generic browser service from the monolith.
