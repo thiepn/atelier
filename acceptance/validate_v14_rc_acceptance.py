@@ -133,6 +133,8 @@ def load_rc_status(path):
         errors.append('RC diagnostics are not marked stripped')
     if status.get('ownCacheLookupOnly') is not True:
         errors.append('RC status must declare own-cache-only service-worker reads')
+    if status.get('productionEligible') is not False:
+        errors.append('RC packaging must not claim final production eligibility')
     version = status.get('version')
     if not isinstance(version, str) or not VERSION_RE.fullmatch(version):
         errors.append('unexpected RC version')
@@ -148,9 +150,21 @@ def load_rc_status(path):
     gate = status.get('certificationGate')
     if not isinstance(gate, dict):
         errors.append('missing RC certificationGate')
+    else:
+        if not isinstance(gate.get('priorReleaseGateReady'), bool):
+            errors.append('certificationGate.priorReleaseGateReady must be boolean')
+        if gate.get('promotionEligible') is not False:
+            errors.append('certificationGate.promotionEligible must remain false before final cutover certification')
+        blockers = gate.get('blockers')
+        if not isinstance(blockers, list) or 'v14-physical-signoff-required' not in blockers or 'v14-cutover-verification-required' not in blockers:
+            errors.append('certificationGate must retain V14 physical and cutover blockers')
     if errors:
         raise ValueError('; '.join(errors))
     return status
+
+
+def prior_release_gate_ready(rc_status):
+    return rc_status['certificationGate']['priorReleaseGateReady'] is True
 
 
 def expected_identity(rc_status):
@@ -183,25 +197,20 @@ def validate_file(path, rc_status):
         errors.append('unexpected evidence schema')
     if original.get('acceptanceMilestone') != PLAN['acceptanceMilestone']:
         errors.append('acceptance milestone mismatch')
-
     for key, expected in expected_identity(rc_status).items():
         if original.get(key) != expected:
             errors.append(f'{key} mismatch')
 
     candidate_url = original.get('candidateUrl')
-    production_url = DEPLOYMENT['productionUrl']
     if parse_url(candidate_url, require_directory=True) is None:
         errors.append('candidateUrl must be a clean HTTPS directory URL')
-    if candidate_url == production_url:
+    if candidate_url == DEPLOYMENT['productionUrl']:
         errors.append('candidateUrl must not be the production URL')
-    runner_url = original.get('runnerUrl')
-    if parse_url(runner_url, allow_query=True) is None:
+    if parse_url(original.get('runnerUrl'), allow_query=True) is None:
         errors.append('runnerUrl must be a valid HTTPS URL')
-    status_url = original.get('stagingStatusUrl')
-    if parse_url(status_url) is None:
+    if parse_url(original.get('stagingStatusUrl')) is None:
         errors.append('stagingStatusUrl must be a clean HTTPS URL')
-    candidate_origin = original.get('candidateOrigin')
-    if candidate_origin != expected_candidate_origin():
+    if original.get('candidateOrigin') != expected_candidate_origin():
         errors.append('candidateOrigin mismatch')
 
     if original.get('attested') is not True:
@@ -264,7 +273,6 @@ def validate_file(path, rc_status):
     for test_id in required_tests:
         if result_map.get(test_id) != 'PASS':
             errors.append(f'{test_id}: required PASS, got {result_map.get(test_id)!r}')
-
     return target_id, original, errors
 
 
@@ -294,7 +302,6 @@ def collect(evidence_dir, rc_status):
                     'runnerUrl': data.get('runnerUrl', ''),
                     'stagingStatusUrl': data.get('stagingStatusUrl', ''),
                 }
-
     required = {target['id'] for target in PLAN['targets']}
     missing = sorted(required - set(by_target))
     physical_ready = not failures and not missing
@@ -303,14 +310,15 @@ def collect(evidence_dir, rc_status):
 
 def build_physical_signoff(by_target, rc_status):
     target_order = [target['id'] for target in PLAN['targets']]
-    prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
+    prior_ready = prior_release_gate_ready(rc_status)
     payload = {
         'schema': PLAN['physicalSignoffSchema'],
         'acceptanceMilestone': PLAN['acceptanceMilestone'],
         **expected_identity(rc_status),
         'physicalState': 'PASS',
-        'priorReleaseGateReady': prior_gate_ready,
-        'promotionReady': prior_gate_ready,
+        'priorReleaseGateReady': prior_ready,
+        'cutoverEligible': prior_ready,
+        'productionPromotionReady': False,
         'requiredTargets': target_order,
         'evidence': [{'targetId': target_id, **by_target[target_id]} for target_id in target_order],
         'generatedAt': datetime.datetime.now(datetime.timezone.utc).isoformat(),
@@ -321,7 +329,7 @@ def build_physical_signoff(by_target, rc_status):
 
 
 def build_report(by_target, failures, missing, physical_ready, rc_status):
-    prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
+    prior_ready = prior_release_gate_ready(rc_status)
     return {
         'acceptanceMilestone': PLAN['acceptanceMilestone'],
         **expected_identity(rc_status),
@@ -330,17 +338,19 @@ def build_report(by_target, failures, missing, physical_ready, rc_status):
         'failures': [{'filename': name, 'errors': errors} for name, errors in failures],
         'missing': missing,
         'physicalReady': physical_ready,
-        'priorReleaseGateReady': prior_gate_ready,
-        'promotionReady': physical_ready and prior_gate_ready,
-        'priorReleaseBlockers': rc_status['certificationGate'].get('blockers', []),
+        'priorReleaseGateReady': prior_ready,
+        'cutoverEligible': physical_ready and prior_ready,
+        'productionPromotionReady': False,
+        'priorReleaseBlockers': rc_status['certificationGate'].get('priorReleaseBlockers', []),
+        'remainingPromotionBlockers': ['v14-cutover-verification-required'],
     }
 
 
 def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
     rc_status = load_rc_status(rc_status_path)
     by_target, failures, missing, physical_ready = collect(evidence_dir, rc_status)
-    prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
-    promotion_ready = physical_ready and prior_gate_ready
+    prior_ready = prior_release_gate_ready(rc_status)
+    cutover_eligible = physical_ready and prior_ready
     print(f'VALID_RC_EVIDENCE={len(by_target)}/{len(PLAN["targets"])}')
     for target_id in sorted(by_target):
         print(f'PASS {target_id}: {by_target[target_id]["filename"]}')
@@ -350,9 +360,9 @@ def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
     for target_id in missing:
         print(f'PENDING {target_id}: evidence missing')
     print('PHYSICAL_READY=' + ('true' if physical_ready else 'false'))
-    print('PRIOR_RELEASE_GATE_READY=' + ('true' if prior_gate_ready else 'false'))
-    print('PROMOTION_READY=' + ('true' if promotion_ready else 'false'))
-
+    print('PRIOR_RELEASE_GATE_READY=' + ('true' if prior_ready else 'false'))
+    print('CUTOVER_ELIGIBLE=' + ('true' if cutover_eligible else 'false'))
+    print('PRODUCTION_PROMOTION_READY=false')
     if write_report:
         pathlib.Path(write_report).write_text(json.dumps(build_report(by_target, failures, missing, physical_ready, rc_status), indent=2) + '\n', encoding='utf-8')
     if write_signoff:
@@ -402,7 +412,6 @@ def self_test(rc_status_path):
         targets = PLAN['targets']
         for target in targets:
             write_fixture(root / f'{target["id"]}.json', fixture_payload(target, rc_status))
-
         signoff = root / 'physical-signoff.json'
         report = root / 'report.json'
         assert run(root, rc_status_path, signoff, report) == 0
@@ -410,11 +419,13 @@ def self_test(rc_status_path):
         assert report_data['physicalReady'] is True
         assert report_data['candidateUrl'] == DEPLOYMENT['url']
         assert report_data['runnerUrl'] == DEPLOYMENT['runnerUrl']
-        assert report_data['promotionReady'] is bool(rc_status['certificationGate'].get('promotionEligible'))
+        assert report_data['cutoverEligible'] is prior_release_gate_ready(rc_status)
+        assert report_data['productionPromotionReady'] is False
         signed = json.loads(signoff.read_text(encoding='utf-8'))
         signed_payload = dict(signed)
         supplied = signed_payload.pop('signoffFingerprint')
         assert supplied == fingerprint(signed_payload)
+        assert signed['productionPromotionReady'] is False
         assert len(signed['evidence']) == len(targets)
 
         firefox_path = root / 'firefox-desktop.json'
@@ -430,7 +441,6 @@ def self_test(rc_status_path):
             write_fixture(firefox_path, resign(bad))
             target_id, _, errors = validate_file(firefox_path, rc_status)
             assert target_id == 'firefox-desktop' and errors
-
         write_fixture(firefox_path, good)
         write_fixture(root / 'firefox-copy.json', fixture_payload(targets[0], rc_status))
         assert run(root, rc_status_path) == 2
@@ -447,7 +457,7 @@ def self_test(rc_status_path):
         else:
             raise AssertionError('wrong candidate version status was accepted')
 
-    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true own_cache_only=true')
+    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true own_cache_only=true promotion_fail_closed=true')
     return 0
 
 
