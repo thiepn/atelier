@@ -1,4 +1,4 @@
-name: V14 source round-trip
+name: V14 source and overlay build
 
 on:
   push:
@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  source-roundtrip:
+  source-and-overlay:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -24,11 +24,49 @@ jobs:
       - name: Run source-tool unit tests
         run: PYTHONPATH=tools python -m unittest -v tools/test_v14_source.py
 
+      - name: Run V14 overlay-build unit tests
+        run: PYTHONPATH=tools python -m unittest -v tools/test_v14_build.py
+
+      - name: Check V14 module JavaScript syntax
+        run: node --check src/v14/dev-status/dev-status.js
+
       - name: Verify frozen V14 baseline
         run: python tools/v14_source.py verify-lock --input index.html --lock src/source.lock.json
 
       - name: Extract current runtime losslessly
         run: python tools/v14_source.py extract --input index.html --out .v14-source-check --lock src/source.lock.json --force
 
-      - name: Check byte-for-byte round-trip
+      - name: Check byte-for-byte source round-trip
         run: python tools/v14_source.py check --input index.html --source .v14-source-check --lock src/source.lock.json
+
+      - name: Build V14 development artifact
+        run: python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir .v14-dist --force
+
+      - name: Verify overlay artifact structure
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('.v14-dist')
+          manifest = json.loads((root / 'v14-build-manifest.json').read_text('utf-8'))
+          html = (root / 'index.html').read_text('utf-8')
+          assert manifest['schema'] == 'atelier-v14-development-build-v1'
+          assert manifest['version'] == '14.0.0-dev.2'
+          assert manifest['developmentOnly'] is True
+          assert manifest['baseline']['runtimeRelease'] == '13.2.0'
+          assert '<!-- ATELIER_V14_STYLES:BEGIN -->' in html
+          assert '<!-- ATELIER_V14_MODULES:BEGIN -->' in html
+          assert 'v14/dev-status/dev-status.css' in html
+          assert 'v14/dev-status/dev-status.js' in html
+          assert (root / 'v14/dev-status/dev-status.css').is_file()
+          assert (root / 'v14/dev-status/dev-status.js').is_file()
+          print('V14_ARTIFACT_STRUCTURE_OK=true')
+          PY
+
+      - name: Upload V14 development artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atelier-v14-dev.2
+          path: .v14-dist
+          if-no-files-found: error
+          retention-days: 14
