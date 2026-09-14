@@ -1,0 +1,25 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-notifications-bridge",
+  "description": "Delegate the legacy announcement, toast and save-status shell functions to the V14 notification service after that module becomes available, while preserving the exact legacy implementation as boot-time fallback.",
+  "changes": [
+    {
+      "id": "announce-bridge",
+      "expectedOccurrences": 1,
+      "find": "function announce(message){message=String(message||'').trim();if(!message||message===lastAnnouncement)return;lastAnnouncement=message;const el=$('#sr-announcer');if(!el)return;el.textContent='';requestAnimationFrame(()=>el.textContent=message);}",
+      "replace": "function announce(message){if(globalThis.AtelierV14Shell?.notifications?.announce)return globalThis.AtelierV14Shell.notifications.announce(message);message=String(message||'').trim();if(!message||message===lastAnnouncement)return;lastAnnouncement=message;const el=$('#sr-announcer');if(!el)return;el.textContent='';requestAnimationFrame(()=>el.textContent=message);}"
+    },
+    {
+      "id": "toast-bridge",
+      "expectedOccurrences": 1,
+      "find": "function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');announce(message);clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4300);}",
+      "replace": "function toast(message){if(globalThis.AtelierV14Shell?.notifications?.toast)return globalThis.AtelierV14Shell.notifications.toast(message);const el=$('#toast');el.textContent=message;el.classList.add('show');announce(message);clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),4300);}"
+    },
+    {
+      "id": "status-bridge",
+      "expectedOccurrences": 1,
+      "find": "function status(message,kind=''){const el=$('#save-status');el.textContent=message;el.className=kind;if(kind==='error')announce(message);}",
+      "replace": "function status(message,kind=''){if(globalThis.AtelierV14Shell?.notifications?.status)return globalThis.AtelierV14Shell.notifications.status(message,kind);const el=$('#save-status');el.textContent=message;el.className=kind;if(kind==='error')announce(message);}"
+    }
+  ]
+}
