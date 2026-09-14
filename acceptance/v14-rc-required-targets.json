@@ -6,9 +6,9 @@
   "requiredRcStatusSchema": "atelier-v14-release-candidate-status-v1",
   "requiresPriorCertificationMatrix": "CERTIFICATION_MATRIX_13.3.1.json",
   "candidateDeployment": {
-    "url": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/app/",
-    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.18",
-    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/staging-status.json",
+    "url": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/app/",
+    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/acceptance.html?v=14.0.0-dev.19",
+    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/staging-status.json",
     "productionUrl": "https://thiepn.github.io/atelier/",
     "httpsRequired": true,
     "exactUrlEvidenceRequired": true,
