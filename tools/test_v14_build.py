@@ -27,6 +27,17 @@ class V14BuildTests(unittest.TestCase):
             "const CORE=['./','./index.html','./asset.txt'];\n"
             "async function one(){const keys=await caches.keys();return keys.filter(k=>k.startsWith('atelier-space-studio-')&&k!==CACHE);}\n"
             "async function two(){const keys=await caches.keys();return keys.filter(k=>k.startsWith('atelier-space-studio-')&&k!==CACHE);}\n"
+            "self.addEventListener('fetch',event=>{\n"
+            " if(event.request.method!=='GET')return;\n"
+            " event.respondWith((async()=>{\n"
+            "   const cached=await caches.match(event.request);\n"
+            "   if(cached)return cached;\n"
+            "   try{const response=await fetch(event.request);return response;}catch{\n"
+            "     if(event.request.mode==='navigate')return (await caches.match('./index.html'))||(await caches.match('./'))||Response.error();\n"
+            "     return Response.error();\n"
+            "   }\n"
+            " })());\n"
+            "});\n"
         )
         (root / "sw.js").write_text(worker, "utf-8")
         manifest = {
@@ -42,6 +53,7 @@ class V14BuildTests(unittest.TestCase):
                 "expectedSourceSha256": hashlib.sha256(worker.encode("utf-8")).hexdigest(),
                 "baselineCachePrefix": "atelier-space-studio-",
                 "cachePrefix": "atelier-v14-dev-",
+                "ownCacheLookupOnly": True,
             },
         }
         manifest_path = root / "src/v14/manifest.json"
@@ -86,10 +98,43 @@ class V14BuildTests(unittest.TestCase):
             self.assertIn('./v14/dev-status/dev-status.js', worker)
             self.assertNotIn("k.startsWith('atelier-space-studio-')", worker)
             self.assertEqual(worker.count("k.startsWith('atelier-v14-dev-')"), 2)
+            self.assertNotIn("caches.match(", worker)
+            self.assertIn("const cache=await caches.open(CACHE);", worker)
+            self.assertIn("cache.match(event.request)", worker)
+            self.assertIn("cache.match('./index.html')", worker)
+            self.assertIn("cache.match('./')", worker)
             self.assertEqual(record["cache"], "atelier-v14-dev-14.0.0-dev.8")
             self.assertEqual(record["stalePrefixReplacements"], 2)
+            self.assertTrue(record["ownCacheLookupOnly"])
+            self.assertEqual(record["cacheLookupIsolationReplacements"], 3)
             self.assertIn('./v14/dev-status/dev-status.css', record["core"])
             self.assertIn('./v14/dev-status/dev-status.js', record["core"])
+
+    def test_service_worker_requires_own_cache_policy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            data = json.loads(manifest.read_text("utf-8"))
+            data["serviceWorker"]["ownCacheLookupOnly"] = False
+            manifest.write_text(json.dumps(data), "utf-8")
+            with self.assertRaises(ValueError):
+                v14_build.build(root, manifest, root / "out")
+
+    def test_service_worker_rejects_changed_cache_lookup_boundary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            worker_path = root / "sw.js"
+            worker = worker_path.read_text("utf-8").replace(
+                "const cached=await caches.match(event.request);",
+                "const cached=await customCache.match(event.request);",
+            )
+            worker_path.write_text(worker, "utf-8")
+            data = json.loads(manifest.read_text("utf-8"))
+            data["serviceWorker"]["expectedSourceSha256"] = hashlib.sha256(worker.encode("utf-8")).hexdigest()
+            manifest.write_text(json.dumps(data), "utf-8")
+            with self.assertRaises(ValueError):
+                v14_build.build(root, manifest, root / "out")
 
     def test_service_worker_source_hash_mismatch_rejected(self):
         with tempfile.TemporaryDirectory() as tmp:
