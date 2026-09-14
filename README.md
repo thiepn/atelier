@@ -1,6 +1,6 @@
 # Atelier Space Studio
 
-> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.8** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
+> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.9** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
 
 Atelier is a local-first browser space-planning studio with a static PWA deployment.
 
@@ -10,39 +10,15 @@ V14 is being developed as an isolated successor line rather than by mutating the
 
 Completed development milestones:
 
-1. **14.0.0-dev.1 — Reproducible source boundary**
-   - lossless `index.html` source segmentation;
-   - byte-for-byte rebuild verification;
-   - frozen 13.2.0 source lock.
-2. **14.0.0-dev.2 — Deterministic module overlay**
-   - separate V14 artifact;
-   - ordered module manifest;
-   - hashed build manifest;
-   - path/traversal guards;
-   - development diagnostics.
-3. **14.0.0-dev.3 — Shell notifications**
-   - exact-patch bridge system;
-   - modular announcements, toasts and save/status handling;
-   - legacy fallback retained.
-4. **14.0.0-dev.4 — Command palette**
-   - modular palette opening/search/rendering;
-   - existing command execution contract preserved.
-5. **14.0.0-dev.5 — Browser file utilities**
-   - modular browser download delivery;
-   - existing safe-filename behavior preserved.
-6. **14.0.0-dev.6 — Dialog shell**
-   - modular modal DOM/focus behavior;
-   - private IIFE state retained through narrow adapters.
-7. **14.0.0-dev.7 — Browser shell integration gate**
-   - generated artifact driven in real Chromium;
-   - legacy keyboard/action paths exercised through V14 bridges;
-   - uncaught page/console error gate;
-   - manifest-driven, concurrency-safe CI.
-8. **14.0.0-dev.8 — Cross-browser, responsive & offline integration gate**
-   - Chromium desktop, Chromium mobile/touch, Firefox and WebKit integration matrix;
-   - responsive horizontal-overflow gate;
-   - keyboard/Escape/focus-restoration and shell accessibility checks;
-   - controlled service-worker offline reload of the generated V14 artifact.
+1. **14.0.0-dev.1 — Reproducible source boundary** — lossless source segmentation, byte-for-byte rebuild verification and frozen 13.2.0 source lock.
+2. **14.0.0-dev.2 — Deterministic module overlay** — separate V14 artifact, ordered module manifest, hashed build manifest, path guards and development diagnostics.
+3. **14.0.0-dev.3 — Shell notifications** — modular announcements, toasts and status handling with exact legacy fallback.
+4. **14.0.0-dev.4 — Command palette** — modular opening/search/rendering while preserving legacy execution contracts.
+5. **14.0.0-dev.5 — Browser file utilities** — modular browser download delivery and safe-filename behavior.
+6. **14.0.0-dev.6 — Dialog shell** — modular modal DOM/focus behavior through narrow state adapters.
+7. **14.0.0-dev.7 — Browser shell integration gate** — generated artifact exercised through real Chromium and manifest-driven CI.
+8. **14.0.0-dev.8 — Cross-browser, responsive & offline gate** — Chromium desktop/mobile, Firefox, WebKit, keyboard/focus/accessibility checks and controlled offline reload.
+9. **14.0.0-dev.9 — Modular SVG icon renderer** — pure icon serialization moved behind an exact legacy bridge while the locked icon registry remains legacy-owned.
 
 Build the current development artifact with:
 
@@ -54,23 +30,23 @@ Architecture: `ARCHITECTURE_V14.md`
 
 ### Current V14 validation
 
-Dev.8 passes:
+Dev.9 passes:
 
 - source and overlay unit tests;
-- independent behavior tests for all four shell services;
+- independent behavior tests for notifications, dialogs, commands, file utilities and icons;
 - exact locked-baseline verification;
 - byte-for-byte source round-trip;
 - exact bridge verification;
 - generated artifact structure checks;
-- Chromium desktop shell integration;
-- Chromium 390×844 mobile/touch shell integration;
-- Firefox desktop shell integration;
-- WebKit desktop shell integration;
+- Chromium desktop integration;
+- Chromium 390×844 mobile/touch integration;
+- Firefox desktop integration;
+- WebKit desktop integration;
 - responsive overflow, dialog focus/Escape and accessibility assertions;
-- controlled Chromium offline/PWA reload with the V14 overlay restored from cache;
-- artifact upload pipeline.
+- controlled Chromium offline/PWA reload with all V14 shell services restored;
+- artifact upload.
 
-Validated workflow run: `34815078492`.
+Latest validated artifact: `atelier-v14-dev.9` from workflow run `34815530617`.
 
 ## Production status
 
@@ -113,20 +89,8 @@ V14 development may continue on its isolated branch, but **V14 must not be promo
 - `production.config.json`
 - `RELEASE_NOTES_13.2.0.md`
 - `RELEASE_NOTES_13.3.1.md`
-- `RELEASE_NOTES_14.0.0-dev.1.md`
-- `RELEASE_NOTES_14.0.0-dev.2.md`
-- `RELEASE_NOTES_14.0.0-dev.3.md`
-- `RELEASE_NOTES_14.0.0-dev.4.md`
-- `RELEASE_NOTES_14.0.0-dev.5.md`
-- `RELEASE_NOTES_14.0.0-dev.6.md`
-- `RELEASE_NOTES_14.0.0-dev.7.md`
-- `RELEASE_NOTES_14.0.0-dev.8.md`
+- `RELEASE_NOTES_14.0.0-dev.1.md` through `RELEASE_NOTES_14.0.0-dev.9.md`
 - `TEST_REPORT_13.2.0.md`
 - `TEST_REPORT_13.3.1.md`
-- `TEST_REPORT_14.0.0-dev.3.md`
-- `TEST_REPORT_14.0.0-dev.4.md`
-- `TEST_REPORT_14.0.0-dev.5.md`
-- `TEST_REPORT_14.0.0-dev.6.md`
-- `TEST_REPORT_14.0.0-dev.7.md`
-- `TEST_REPORT_14.0.0-dev.8.md`
+- `TEST_REPORT_14.0.0-dev.3.md` through `TEST_REPORT_14.0.0-dev.9.md`
 - `CERTIFICATION_MATRIX_13.3.1.json`
