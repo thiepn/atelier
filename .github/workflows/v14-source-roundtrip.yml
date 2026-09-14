@@ -35,13 +35,16 @@ jobs:
       - name: Run V14 overlay-build unit tests
         run: PYTHONPATH=tools python -m unittest -v tools/test_v14_build.py
 
-      - name: Check V14 module JavaScript syntax
+      - name: Check V14 module and browser-test JavaScript syntax
         run: |
           node --check src/v14/shell/notifications.js
           node --check src/v14/shell/dialogs.js
           node --check src/v14/shell/commands.js
           node --check src/v14/shell/files.js
           node --check src/v14/dev-status/dev-status.js
+          node --check tools/v14-playwright.config.js
+          node --check tools/v14-shell-smoke.spec.js
+          node --check tools/v14-offline-pwa.spec.js
 
       - name: Run shell notification behavior test
         run: node tools/test_v14_notifications.mjs src/v14/shell/notifications.js
@@ -97,12 +100,12 @@ jobs:
           print('V14_ARTIFACT_STRUCTURE_OK=true version='+built['version'])
           PY
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright browser matrix
         run: |
           npm install --no-save --no-package-lock @playwright/test@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run generated-artifact browser smoke
+      - name: Run generated-artifact browser matrix and offline PWA smoke
         env:
           V14_SMOKE_URL: http://127.0.0.1:4173/
         run: |
@@ -114,7 +117,8 @@ jobs:
             sleep 1
           done
           curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null
-          npx playwright test tools/v14-shell-smoke.spec.js --reporter=line --workers=1
+          npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --reporter=line --workers=1
+          npx playwright test v14-offline-pwa.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
 
       - name: Resolve artifact name
         id: artifact_meta
