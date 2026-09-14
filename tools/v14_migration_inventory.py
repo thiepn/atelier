@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the V14 migration/dependency inventory and migration-selection policy."""
+"""Validate the V14 migration/dependency inventory and stabilization policy."""
 
 from __future__ import annotations
 
@@ -67,6 +67,7 @@ def validate_inventory(data: dict) -> dict:
     stabilization = policy.get("stabilization")
     frozen_modules: list[str] = []
     frozen_patches: list[str] = []
+    worker_policy: dict | None = None
     if phase == "stabilization":
         require(selection_required is False, "stabilization phase requires selectionRequired=false")
         require(isinstance(stabilization, dict), "stabilization policy is required")
@@ -75,6 +76,12 @@ def validate_inventory(data: dict) -> dict:
         require(stabilization.get("allowProductionCutover") is False, "stabilization cannot authorize production cutover")
         frozen_modules = unique_string_list(stabilization.get("frozenModules"), "stabilization.frozenModules")
         frozen_patches = unique_string_list(stabilization.get("frozenPatches"), "stabilization.frozenPatches")
+        worker_policy = stabilization.get("serviceWorker")
+        require(isinstance(worker_policy, dict), "stabilization.serviceWorker policy is required")
+        require(worker_policy.get("mode") == "isolated-development", "stabilization worker mode must be isolated-development")
+        require(worker_policy.get("cachePrefix") == "atelier-v14-dev-", "unexpected stabilization worker cachePrefix")
+        require(worker_policy.get("preserveBaselineCaches") is True, "stabilization worker must preserve baseline caches")
+        require(worker_policy.get("precacheV14Assets") is True, "stabilization worker must precache V14 assets")
     else:
         require(stabilization is None, "migration phase must not carry a stabilization freeze")
 
@@ -154,6 +161,7 @@ def validate_inventory(data: dict) -> dict:
         "currentCompleted": [b["id"] for b in current_completed],
         "frozenModules": frozen_modules,
         "frozenPatches": frozen_patches,
+        "serviceWorker": worker_policy,
         "boundaryCount": len(boundaries),
         "blockedCount": sum(1 for b in boundaries if b["decision"] == "blocked"),
         "deferredCount": sum(1 for b in boundaries if b["decision"] in {"defer", "hold"}),
@@ -181,6 +189,7 @@ def main() -> None:
         f"completed={','.join(result['completed']) or 'none'} "
         f"frozen_modules={len(result['frozenModules'])} "
         f"frozen_patches={len(result['frozenPatches'])} "
+        f"worker_mode={(result['serviceWorker'] or {}).get('mode', 'none')} "
         f"boundaries={result['boundaryCount']} "
         f"blocked={result['blockedCount']} "
         f"deferred={result['deferredCount']}"
