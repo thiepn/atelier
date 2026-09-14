@@ -1,29 +1,39 @@
 {
   "schema": "atelier-v14-rc-certification-matrix-v1",
-  "milestone": "14.0.0-dev.16",
+  "milestone": "14.0.0-dev.17",
   "rcAcceptanceMilestone": "14.0.0-rc-physical",
-  "status": "certification-infrastructure-ready-real-evidence-pending",
+  "status": "https-staging-live-real-evidence-pending",
   "validatedWorkflow": {
-    "runId": 34883134671,
-    "headSha": "773e7c07e5c46d8b3c36e03272aa13a1c1c0cc72",
+    "runId": 34885183276,
+    "headSha": "17f781e50b044f1b64cda240b5b95914a5745e2e",
+    "conclusion": "success"
+  },
+  "liveHttpsVerification": {
+    "runId": 34885579138,
+    "headSha": "7e98d1a9d932177bd9b9058bb28077dee3e331c9",
     "conclusion": "success"
   },
   "artifacts": {
     "development": {
-      "name": "atelier-v14-dev.16",
-      "workflowArtifactSha256": "804181575b3c13b391aaed1f9d14561b61fcced000c1019b390be575c1ba3bba"
+      "name": "atelier-v14-dev.17",
+      "workflowArtifactSha256": "aefb14c9fe90de46f9a57024ec937b4884a67110a02cc3510eccc6ec3b83d6b5"
     },
     "releaseCandidate": {
-      "name": "atelier-v14-dev.16-rc",
-      "workflowArtifactSha256": "cad91ce7144a1bb191592eb3448e89f8785f44476d40a76a472e6c4da5657376",
-      "cache": "atelier-v14-rc-14.0.0-dev.16",
+      "name": "atelier-v14-dev.17-rc",
+      "workflowArtifactSha256": "4d44debc7955f8dc507ffd1a430dcc0355e175af533876cfa306831fb0272a0f",
+      "indexSha256": "e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f",
+      "serviceWorkerSha256": "bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043",
+      "cache": "atelier-v14-rc-14.0.0-dev.17",
       "diagnosticsStripped": true
+    },
+    "stagingPackage": {
+      "name": "atelier-v14-dev.17-staging",
+      "workflowArtifactSha256": "c343fed27f20246b98bea8b69de08a29577f345b223b72ddb9cb29a488a5c137"
     }
   },
   "automated": {
     "sourceAndOverlayTests": "PASS",
     "migrationPolicyTests": "PASS",
-    "certificationPlanValidation": "PASS",
     "rcPackaging": "PASS",
     "rcEvidenceValidatorSelfTest": "PASS_SYNTHETIC_TOOLING_ONLY",
     "promotionFailClosed": "PASS",
@@ -33,7 +43,12 @@
     "webkitDesktopAutomated": "PASS",
     "developmentOfflineReload": "PASS",
     "releaseCandidateChromium": "PASS",
-    "releaseCandidateOfflineReload": "PASS"
+    "releaseCandidateOfflineReload": "PASS",
+    "physicalEvidenceRunnerBrowserSmoke": "PASS_SYNTHETIC_TOOLING_ONLY",
+    "physicalEvidenceRunnerValidatorCompatibility": "PASS",
+    "liveHttpsStaging": "PASS",
+    "liveExactRcIdentity": "PASS",
+    "productionRootRuntimeImmutable": "PASS"
   },
   "physical": {
     "valid": 0,
@@ -48,13 +63,19 @@
     ],
     "plan": "acceptance/v14-rc-required-targets.json",
     "validator": "acceptance/validate_v14_rc_acceptance.py",
+    "evidenceSchema": "atelier-v14-rc-physical-acceptance-evidence-v2",
     "syntheticEvidenceCounts": false
   },
   "staging": {
-    "state": "not-provisioned",
-    "candidateOrigin": null,
-    "httpsVerified": false,
-    "exactArtifactIdentityVerified": false
+    "state": "live-https-verified",
+    "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/app/",
+    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html",
+    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/staging-status.json",
+    "productionUrl": "https://thiepn.github.io/atelier/",
+    "httpsVerified": true,
+    "exactArtifactIdentityVerified": true,
+    "serviceWorkerScopeIsolatedByPath": true,
+    "productionRootRuntimeUnchanged": true
   },
   "priorReleaseGate": {
     "source": "CERTIFICATION_MATRIX_13.3.1.json",
@@ -64,7 +85,8 @@
   },
   "cutover": {
     "plan": "acceptance/v14-rc-cutover-plan.json",
-    "productionOriginVerified": false,
+    "productionOriginVerifiedForCurrent13_2": true,
+    "v14ProductionOriginVerified": false,
     "updateRecoveryVerified": false,
     "rollbackRecoveryVerified": false,
     "projectDataPreservationVerified": false,
