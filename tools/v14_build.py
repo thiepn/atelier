@@ -14,6 +14,7 @@ from typing import Any
 import v14_source
 
 MODULE_SCHEMA = "atelier-v14-module-manifest-v1"
+PATCH_SCHEMA = "atelier-v14-exact-patch-v1"
 BUILD_SCHEMA = "atelier-v14-development-build-v1"
 STYLE_BEGIN = b"<!-- ATELIER_V14_STYLES:BEGIN -->"
 STYLE_END = b"<!-- ATELIER_V14_STYLES:END -->"
@@ -54,10 +55,76 @@ def load_module_manifest(path: Path) -> dict[str, Any]:
         raise ValueError("V14 module manifest requires a non-empty version")
     styles = [validate_relative_asset(x, ".css") for x in data.get("styles", [])]
     modules = [validate_relative_asset(x, ".js") for x in data.get("modules", [])]
+    patches = [validate_relative_asset(x, ".json") for x in data.get("patches", [])]
     passthrough = [validate_relative_asset(x) for x in data.get("passthrough", [])]
-    if len(styles) != len(set(styles)) or len(modules) != len(set(modules)):
-        raise ValueError("Duplicate V14 style/module asset in manifest")
-    return {**data, "styles": styles, "modules": modules, "passthrough": passthrough}
+    for label, values in (("style", styles), ("module", modules), ("patch", patches), ("passthrough", passthrough)):
+        if len(values) != len(set(values)):
+            raise ValueError(f"Duplicate V14 {label} asset in manifest")
+    return {**data, "styles": styles, "modules": modules, "patches": patches, "passthrough": passthrough}
+
+
+def apply_patch_file(data: bytes, patch_path: Path, relative: str) -> tuple[bytes, dict[str, Any]]:
+    raw = patch_path.read_bytes()
+    patch = json.loads(raw.decode("utf-8"))
+    if not isinstance(patch, dict) or patch.get("schema") != PATCH_SCHEMA:
+        schema = patch.get("schema") if isinstance(patch, dict) else None
+        raise ValueError(f"Unsupported V14 patch schema in {patch_path}: {schema!r}")
+    patch_id = patch.get("id")
+    changes = patch.get("changes")
+    if not isinstance(patch_id, str) or not patch_id.strip():
+        raise ValueError(f"Patch requires a non-empty id: {patch_path}")
+    if not isinstance(changes, list) or not changes:
+        raise ValueError(f"Patch requires at least one change: {patch_path}")
+
+    applied: list[dict[str, Any]] = []
+    output = data
+    for index, change in enumerate(changes):
+        if not isinstance(change, dict):
+            raise ValueError(f"Patch change #{index} must be an object: {patch_path}")
+        change_id = change.get("id", f"change-{index + 1}")
+        find = change.get("find")
+        replace = change.get("replace")
+        expected = change.get("expectedOccurrences", 1)
+        if not isinstance(find, str) or not find:
+            raise ValueError(f"Patch change {change_id!r} has an empty find string")
+        if not isinstance(replace, str):
+            raise ValueError(f"Patch change {change_id!r} replacement must be a string")
+        if not isinstance(expected, int) or expected < 1:
+            raise ValueError(f"Patch change {change_id!r} expectedOccurrences must be >= 1")
+        find_bytes = find.encode("utf-8")
+        replace_bytes = replace.encode("utf-8")
+        count = output.count(find_bytes)
+        if count != expected:
+            raise ValueError(
+                f"Patch {patch_id}/{change_id} expected {expected} occurrence(s), found {count}; "
+                "refusing a non-deterministic patch"
+            )
+        output = output.replace(find_bytes, replace_bytes, expected)
+        applied.append({
+            "id": str(change_id),
+            "occurrences": count,
+            "findSha256": sha256(find_bytes),
+            "replaceSha256": sha256(replace_bytes),
+        })
+
+    return output, {
+        "id": patch_id,
+        "source": relative,
+        "sourceSha256": sha256(raw),
+        "changes": applied,
+    }
+
+
+def apply_patches(data: bytes, source_root: Path, patches: list[str]) -> tuple[bytes, list[dict[str, Any]]]:
+    output = data
+    records: list[dict[str, Any]] = []
+    for relative in patches:
+        path = source_root / Path(*PurePosixPath(relative).parts)
+        if not path.is_file():
+            raise ValueError(f"Missing V14 patch file: {path}")
+        output, record = apply_patch_file(output, path, relative)
+        records.append(record)
+    return output, records
 
 
 def inject_modules(baseline: bytes, styles: list[str], modules: list[str]) -> bytes:
@@ -139,6 +206,8 @@ def build(repo_root: Path, manifest_path: Path, output_dir: Path, force: bool = 
     output_dir.mkdir(parents=True)
 
     source_root = manifest_path.parent
+    patched_baseline, patch_records = apply_patches(baseline, source_root, module_manifest["patches"])
+
     assets: list[dict[str, Any]] = []
     for path in module_manifest["styles"]:
         assets.append(copy_asset(source_root, output_dir, path))
@@ -149,7 +218,7 @@ def build(repo_root: Path, manifest_path: Path, output_dir: Path, force: bool = 
     for path in module_manifest["passthrough"]:
         passthrough.append(copy_passthrough(repo_root, output_dir, path))
 
-    output_index = inject_modules(baseline, module_manifest["styles"], module_manifest["modules"])
+    output_index = inject_modules(patched_baseline, module_manifest["styles"], module_manifest["modules"])
     (output_dir / "index.html").write_bytes(output_index)
 
     build_manifest = {
@@ -162,10 +231,15 @@ def build(repo_root: Path, manifest_path: Path, output_dir: Path, force: bool = 
             "indexSha256": sha256(baseline),
             "bytes": len(baseline),
         },
+        "patchedBaseline": {
+            "indexSha256": sha256(patched_baseline),
+            "bytes": len(patched_baseline),
+        },
         "artifact": {
             "indexSha256": sha256(output_index),
             "bytes": len(output_index),
         },
+        "patches": patch_records,
         "styles": module_manifest["styles"],
         "modules": module_manifest["modules"],
         "assets": assets,
@@ -195,6 +269,7 @@ def main() -> int:
             "V14_BUILD_OK=true "
             f"version={result['version']} "
             f"index_sha256={result['artifact']['indexSha256']} "
+            f"patches={len(result['patches'])} "
             f"assets={len(result['assets'])}"
         )
         return 0
