@@ -4,112 +4,113 @@ This directory contains authored V14 development code.
 
 ## Current checkpoint
 
-**14.0.0-dev.14** is the current validated V14 development artifact. It is isolated from production and is not production certification.
+**14.0.0-dev.15** is the current validated V14 checkpoint. It produces two isolated artifacts:
 
-## Build
+- a development artifact with diagnostics;
+- a stripped release-candidate artifact.
 
-The root `index.html` remains the locked Atelier 13.2.0 baseline. V14 modules are injected only into a separate development artifact:
+Neither artifact is production certification.
+
+## Build and package
+
+Build the normal development artifact:
 
 ```bash
-python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir dist --force
+python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir v14-dist --force
 ```
 
-The builder verifies the baseline lock, applies exact occurrence-checked bridges, injects ordered V14 assets, generates an isolated V14 service worker, copies declared passthrough assets, emits `v14-build-manifest.json`, and never rewrites root `index.html`.
+Package the RC artifact:
 
-## Current modules
+```bash
+python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
+```
 
-- `shell/notifications.js` — announcements, toasts and save/status messaging.
-- `shell/dialogs.js` — modal rendering, focus and confirmation composition.
-- `shell/commands.js` — command-palette opening, search and results.
-- `shell/files.js` — browser downloads and safe filenames.
-- `shell/icons.js` — SVG icon serialization using the legacy registry passed through the bridge.
-- `shell/text.js` — deterministic HTML/SVG/XML escaping.
-- `shell/units.js` — dimension display formatting.
-- `dev-status/` — development-only diagnostics.
+The development builder verifies the locked 13.2.0 baseline, applies exact bridges, injects the frozen V14 module surface, generates the isolated development worker and emits `v14-build-manifest.json`.
 
-Exact legacy bridges live under `patches/`.
+The RC packager then:
 
-## Stabilization freeze
+- removes `dev-status` CSS/JS and their HTML tags;
+- removes those diagnostic assets from the service-worker core;
+- changes the cache namespace from `atelier-v14-dev-*` to `atelier-v14-rc-*`;
+- evaluates `CERTIFICATION_MATRIX_13.3.1.json`;
+- writes RC promotion state to `v14-build-manifest.json` and `v14-rc-status.json`.
+
+## Frozen module surface
+
+1. `shell/notifications.js`
+2. `shell/dialogs.js`
+3. `shell/commands.js`
+4. `shell/files.js`
+5. `shell/icons.js`
+6. `shell/text.js`
+7. `shell/units.js`
+8. `dev-status/dev-status.js` — development packaging only
+
+Seven exact legacy bridges remain frozen under `patches/`.
+
+## Stabilization policy
 
 `migration-inventory.json` is validated by `tools/v14_migration_inventory.py`.
 
-Current stabilization policy:
+Current rules include:
 
 - `phase: stabilization`;
 - `architectureFrozen: true`;
 - `allowNewLegacyBridges: false`;
 - `allowProductionCutover: false`;
-- the current eight modules are frozen;
-- the current seven exact bridge files are frozen;
-- there is no `selected-next` migration boundary.
+- no `selected-next` migration;
+- isolated development cache prefix `atelier-v14-dev-`;
+- isolated RC cache prefix `atelier-v14-rc-`;
+- RC diagnostics must be stripped;
+- RC promotion must require prior production sign-off.
 
-Persistence, schema, geometry and rendering remain blocked from opportunistic extraction. Project math, identity, application orchestration, catalog ownership and domain export orchestration remain deferred/held.
+Persistence, schema, geometry and rendering remain blocked from opportunistic extraction.
 
-## Isolated development service worker
+## Validation
 
-Dev.14 no longer passes through the production 13.2.0 `sw.js` unchanged.
+Latest successful workflow: **`34882066210`**.
 
-The builder now derives a development worker from the hash-locked 13.2.0 worker source and rewrites only the development packaging contract:
+The workflow validates:
 
-- release identity -> current V14 development version;
-- cache -> `atelier-v14-dev-<version>`;
-- stale-cache cleanup -> only the `atelier-v14-dev-` namespace;
-- V14 styles/modules -> added to the offline core;
-- production/baseline `atelier-space-studio-*` caches -> preserved.
+1. source/build and migration-policy tests;
+2. shell/helper behavior tests;
+3. exact baseline and source round trip;
+4. development artifact structure and cache isolation;
+5. RC packaging and diagnostic stripping;
+6. RC certification metadata;
+7. fail-closed promotion behavior;
+8. Chromium desktop/mobile, Firefox and WebKit development integration;
+9. development offline reload;
+10. stripped RC Chromium startup and offline reload;
+11. upload of both development and RC artifacts.
 
-The worker source hash must match the locked 13.2.0 source before generation. The generated worker is syntax-checked and its release/cache/core are verified in CI.
+## RC promotion state
 
-## Automated validation
+Current RC promotion eligibility is **false**.
 
-The V14 workflow currently performs:
+Current blockers:
 
-1. source-tool tests;
-2. overlay/build tests, including service-worker generation tests;
-3. migration-inventory policy tests and validation;
-4. JavaScript syntax checks;
-5. isolated behavior tests for all migrated shell/helper services;
-6. exact 13.2.0 baseline lock verification;
-7. byte-for-byte source round-trip verification;
-8. generated artifact, exact-bridge and architecture-freeze verification;
-9. generated service-worker identity/cache/core validation;
-10. Chromium desktop integration;
-11. Chromium mobile/touch integration;
-12. Firefox desktop integration;
-13. WebKit desktop integration;
-14. responsive, keyboard, focus and accessibility checks;
-15. controlled Chromium offline reload;
-16. cache-isolation proof: stale V14 caches are removed while a seeded 13.2.0 baseline cache survives;
-17. hashed artifact upload.
+- `prior-final-signoff-not-pass`
+- `runtime-advance-not-authorized`
+- `physical-evidence-incomplete`
 
-Latest successful workflow: `34872824160`.
+`--require-production-eligible` must continue to fail until those conditions are genuinely resolved.
 
 ## Ownership boundary
 
-V14 owns only generic post-bootstrap shell/helper behavior and development packaging listed above.
+V14 owns only the generic shell/helper and packaging surfaces listed above.
 
-The legacy runtime still owns:
+Legacy runtime ownership remains for:
 
 - command execution;
-- icon path registry data;
+- icon registry data;
 - project persistence/backups;
-- project schema/validation;
-- geometry and broadly shared project math;
-- project identity;
+- schema/validation;
+- geometry/project math;
+- identity generation;
 - catalog/application state;
 - numeric editing/project unit state;
-- exchange/export domain semantics;
+- domain export semantics;
 - 2D/3D rendering.
 
-## Release-readiness boundary
-
-Dev.14 removes the inherited-service-worker blocker, but it is still not a production artifact.
-
-Known blockers:
-
-- V13.3.1 physical sign-off is still blocked and currently says the runtime may not advance to V14;
-- `v14-build-manifest.json` deliberately sets `developmentOnly: true`;
-- `dev-status/` remains injected;
-- `production.config.json` remains release 13.2.0;
-- V14 physical-device acceptance and production-origin verification have not been completed.
-
-Do not remove these blockers implicitly. A future release-candidate milestone must define a distinct production packaging/certification path without weakening the development freeze or the current production safeguards.
+Do not resume stateful extraction during stabilization merely to increase modularization count.
