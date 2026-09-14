@@ -51,10 +51,7 @@ def build_runner(template: str, plan: dict, rc: dict) -> str:
     if candidate_url == production_url:
         raise ValueError('staging candidate URL must differ from production URL')
 
-    targets = [
-        {'id': t['id'], 'label': t['label'], 'required': t['requiredTests']}
-        for t in plan['targets']
-    ]
+    targets = [{'id': t['id'], 'label': t['label'], 'required': t['requiredTests']} for t in plan['targets']]
     config = {
         'milestone': plan['acceptanceMilestone'],
         'evidenceSchema': plan['evidenceSchema'],
@@ -85,7 +82,7 @@ def build_runner(template: str, plan: dict, rc: dict) -> str:
     if count != 1:
         raise ValueError('Unable to replace acceptance gate')
 
-    verification = "let identityOK=false;async function verifyCandidate(){identityOK=false;showEnv();const box=document.getElementById('environment');try{const [indexText,swText]=await Promise.all([fetch('app/index.html',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('index '+r.status);return r.text()}),fetch('app/sw.js',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('sw '+r.status);return r.text()})]);const ih=await fingerprint(indexText),sh=await fingerprint(swText);identityOK=ih===CONFIG.indexSha256&&sh===CONFIG.swSha256;box.textContent=JSON.stringify({candidateUrl:CONFIG.candidateUrl,rcVersion:CONFIG.rcVersion,rcCache:CONFIG.cache,indexSha256:ih,indexExpected:CONFIG.indexSha256,serviceWorkerSha256:sh,serviceWorkerExpected:CONFIG.swSha256,identityVerified:identityOK,environment:env()},null,2);}catch(error){box.textContent='IDENTITY VERIFICATION FAILED\\n'+String(error);}updateGate();}"
+    verification = "let identityOK=false;async function verifyCandidate(){identityOK=false;showEnv();const box=document.getElementById('environment');try{const [indexText,swText]=await Promise.all([fetch('app/index.html',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('index '+r.status);return r.text()}),fetch('app/sw.js',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('sw '+r.status);return r.text()})]);const ih=sha256Bytes(new TextEncoder().encode(indexText)),sh=sha256Bytes(new TextEncoder().encode(swText));identityOK=ih===CONFIG.indexSha256&&sh===CONFIG.swSha256;box.textContent=JSON.stringify({candidateUrl:CONFIG.candidateUrl,rcVersion:CONFIG.rcVersion,rcCache:CONFIG.cache,indexSha256:ih,indexExpected:CONFIG.indexSha256,serviceWorkerSha256:sh,serviceWorkerExpected:CONFIG.swSha256,identityVerified:identityOK,environment:env()},null,2);}catch(error){box.textContent='IDENTITY VERIFICATION FAILED\\n'+String(error);}updateGate();}"
     runner = runner.replace("const targetEl=document.getElementById('target'),testsEl=document.getElementById('tests');", verification + "\nconst targetEl=document.getElementById('target'),testsEl=document.getElementById('tests');")
     runner = runner.replace("document.getElementById('refresh').onclick=showEnv;", "document.getElementById('refresh').onclick=verifyCandidate;")
 
