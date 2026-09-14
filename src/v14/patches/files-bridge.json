@@ -1,0 +1,19 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-files-bridge",
+  "description": "Delegate browser download delivery and safe filename normalization to the V14 shell file service while retaining exact legacy fallback behavior.",
+  "changes": [
+    {
+      "id": "download-file-bridge",
+      "expectedOccurrences": 1,
+      "find": "function downloadFile(data,name,type='application/octet-stream'){\n const blob=data instanceof Blob?data:new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);\n}",
+      "replace": "function downloadFile(data,name,type='application/octet-stream'){\n const service=globalThis.AtelierV14Shell?.files;if(service?.download&&service.download(data,name,type)!==false)return;const blob=data instanceof Blob?data:new Blob([data],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);\n}"
+    },
+    {
+      "id": "safe-name-bridge",
+      "expectedOccurrences": 1,
+      "find": "function safeName(name){return (name.normalize('NFKD').replace(/[^a-z0-9_-]/gi,'-').replace(/-+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||'atelier-project').toLowerCase();}",
+      "replace": "function safeName(name){const service=globalThis.AtelierV14Shell?.files;if(service?.safeName){const result=service.safeName(name);if(result!==false)return result;}return (name.normalize('NFKD').replace(/[^a-z0-9_-]/gi,'-').replace(/-+/g,'-').replace(/^-+|-+$/g,'').slice(0,80)||'atelier-project').toLowerCase();}"
+    }
+  ]
+}
