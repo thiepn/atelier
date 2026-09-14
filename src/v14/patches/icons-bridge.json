@@ -1,0 +1,13 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-icons-bridge",
+  "description": "Delegate SVG icon serialization to the V14 shell icon renderer while keeping the legacy icon registry and exact fallback output inside the locked runtime.",
+  "changes": [
+    {
+      "id": "icon-renderer-bridge",
+      "expectedOccurrences": 1,
+      "find": "function icon(name,size=18){return `<svg width=\"${size}\" height=\"${size}\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"${ICON_PATHS[name]||ICON_PATHS.cube}\"/></svg>`;}",
+      "replace": "function icon(name,size=18){const service=globalThis.AtelierV14Shell?.icons;if(service?.render){const rendered=service.render(name,size,ICON_PATHS);if(rendered!==false)return rendered;}return `<svg width=\"${size}\" height=\"${size}\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"${ICON_PATHS[name]||ICON_PATHS.cube}\"/></svg>`;}"
+    }
+  ]
+}
