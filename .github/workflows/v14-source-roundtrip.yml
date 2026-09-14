@@ -40,14 +40,14 @@ jobs:
         run: python tools/v14_source.py check --input index.html --source .v14-source-check --lock src/source.lock.json
 
       - name: Build V14 development artifact
-        run: python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir .v14-dist --force
+        run: python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir v14-dist --force
 
       - name: Verify overlay artifact structure
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          root = Path('.v14-dist')
+          root = Path('v14-dist')
           manifest = json.loads((root / 'v14-build-manifest.json').read_text('utf-8'))
           html = (root / 'index.html').read_text('utf-8')
           assert manifest['schema'] == 'atelier-v14-development-build-v1'
@@ -67,6 +67,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: atelier-v14-dev.2
-          path: .v14-dist
+          path: v14-dist
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 14
