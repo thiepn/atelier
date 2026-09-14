@@ -1,25 +1,29 @@
 # Atelier V14 RC Certification
 
-## Purpose
+## Live physical-testing entry point
 
-This directory now contains a V14 release-candidate certification layer that is separate from the unresolved V13.3.1 production sign-off.
+Use the physical evidence runner on each real device/browser:
 
-It is designed to let real V14 RC physical evidence be collected and validated later without implying that production promotion is authorized.
+`https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html`
 
-## Inputs
+The exact candidate under test is:
 
-A V14 RC evidence set is bound to the generated `v14-rc-status.json` from the exact candidate package being tested.
+`https://thiepn.github.io/atelier/v14-rc-staging/app/`
 
-Each evidence file must match:
+The runner verifies the staged `index.html` and `sw.js` SHA-256 values before evidence can become ready.
 
-- RC version;
-- RC `index.html` SHA-256;
-- RC `sw.js` SHA-256;
-- RC cache identity;
-- one normalized HTTPS candidate origin;
-- one required physical target.
+## Candidate identity
 
-The evidence schema is `atelier-v14-rc-physical-acceptance-evidence-v1`.
+Current RC:
+
+- version: `14.0.0-dev.17`
+- cache: `atelier-v14-rc-14.0.0-dev.17`
+- index SHA-256: `e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f`
+- service-worker SHA-256: `bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043`
+
+Staging status is published at:
+
+`https://thiepn.github.io/atelier/v14-rc-staging/staging-status.json`
 
 ## Required physical targets
 
@@ -29,13 +33,35 @@ The evidence schema is `atelier-v14-rc-physical-acceptance-evidence-v1`.
 4. Safari iPad / Home Screen Web App
 5. Chrome Android Installed PWA
 
-Target-specific required checks are defined in `v14-rc-required-targets.json`.
+Every target must complete its required checklist on the actual browser/device.
 
-Synthetic fixtures are permitted only to verify the validator. They never satisfy the physical gate.
+## Evidence contract
+
+Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v2`.
+
+Each file binds:
+
+- acceptance milestone;
+- RC version;
+- RC index hash;
+- RC service-worker hash;
+- RC cache identity;
+- HTTPS staging host origin;
+- exact staged candidate URL;
+- exact runner URL;
+- target identity;
+- tester/device/OS/browser metadata;
+- all required test outcomes;
+- explicit attestation;
+- deterministic evidence fingerprint.
+
+The runner keeps evidence blocked unless candidate identity verifies, every required result is PASS, metadata is complete and the tester attests the run.
+
+Synthetic CI evidence tests the tooling only. It never satisfies the physical gate.
 
 ## Validation
 
-Run:
+Validate exported real evidence with:
 
 ```bash
 python acceptance/validate_v14_rc_acceptance.py \
@@ -45,45 +71,45 @@ python acceptance/validate_v14_rc_acceptance.py \
   --write-signoff v14-rc-physical-signoff.json
 ```
 
-The validator reports three distinct states:
+The validator reports:
 
-- `PHYSICAL_READY` — all five real physical targets are valid and PASS;
-- `PRIOR_RELEASE_GATE_READY` — the candidate's certification metadata says the unresolved prior-release gate is satisfied;
-- `PROMOTION_READY` — both conditions above are true.
+- `PHYSICAL_READY`
+- `PRIOR_RELEASE_GATE_READY`
+- `PROMOTION_READY`
 
-A physical sign-off file may be generated when the V14 physical gate is complete even if promotion remains blocked by the prior-release gate. This separation prevents valid V14 testing from being confused with authorization to deploy it.
+These are deliberately separate. V14 physical testing can complete while promotion remains blocked by the prior-release gate.
 
-## Candidate origin
+## Staging safety
 
-Physical evidence must come from one normalized HTTPS origin in the form:
+Dev.17 publishes only the `v14-rc-staging/**` subtree on `main`.
 
-`https://host[:port]/`
+The publication workflow verifies before and after copying that production root files retain the frozen Atelier 13.2.0 hashes. An independent HTTPS workflow then downloads the public staging RC and production root and verifies both identities again.
 
-All five files in one evidence set must reference the same origin.
-
-The current cutover plan does not provision a staging origin and explicitly forbids using the production origin for V14 until the prior-release sign-off allows runtime advancement.
+The staged service worker lives under `v14-rc-staging/app/`, so its normal service-worker scope is limited to that path and does not replace the root production worker.
 
 ## Cutover and rollback
 
-`v14-rc-cutover-plan.json` defines the later production gates. Even after V14 RC physical acceptance passes, production still requires:
+Staging availability is not production authorization.
+
+`v14-rc-cutover-plan.json` still requires:
 
 - prior-release final sign-off;
-- exact production artifact hash matching;
-- production-origin verification;
+- V14 RC physical sign-off;
+- exact V14 production artifact identity;
+- V14 production-origin verification;
 - installed-PWA update recovery;
 - offline cold start after update;
-- rollback to the 13.2.0 baseline;
-- project data surviving both update and rollback;
+- rollback to Atelier 13.2.0;
+- project data surviving update and rollback;
 - stale-cache cleanup without project-data loss.
 
 Automatic promotion is forbidden.
 
 ## Current state
 
-Real V14 RC physical evidence: **0/5**.
-
-Staging origin: **not provisioned**.
-
-Production cutover: **blocked**.
-
-V13.3.1 prior-release physical sign-off: **blocked**.
+- HTTPS staging: **LIVE / VERIFIED**
+- V14 RC automated/tooling validation: **PASS**
+- Real V14 RC physical evidence: **0/5**
+- V13.3.1 prior-release gate: **BLOCKED**
+- V14 promotion ready: **FALSE**
+- Production runtime: **Atelier 13.2.0**
