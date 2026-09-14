@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Atelier V13.3.1 Physical Acceptance</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f5f5f3;color:#171717}body{display:grid;grid-template-rows:auto 1fr}.bar{padding:10px 14px;border-bottom:1px solid #d8d8d4;background:#fff;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}.title{font-weight:750}.note{font-size:13px;color:#666}.status{font-size:13px;font-weight:700;color:#1a6b37}iframe{width:100%;height:100%;border:0;background:#f5f5f3}
+</style>
+</head>
+<body>
+<div class="bar"><div><div class="title">Atelier V13.3.1 Physical Acceptance</div><div class="note">Resumable wrapper for the unchanged V13.3.0 evidence generator. Drafts stay on this device.</div></div><div id="status" class="status">Loading runner…</div></div>
+<iframe id="runner" src="DEVICE_ACCEPTANCE_13.3.0.html" title="Atelier physical-device acceptance runner"></iframe>
+<script>
+const frame=document.getElementById('runner'),statusEl=document.getElementById('status'),PREFIX='atelier-acceptance-draft-13.3.1:';
+let doc=null,saveTimer=0;
+const wanted=new URLSearchParams(location.search).get('target');
+function key(){const t=doc?.getElementById('target')?.value;return t?PREFIX+t:null;}
+function rows(){return [...doc.querySelectorAll('#tests .test')].map(r=>({id:r.dataset.id,status:r.querySelector('select').value,notes:r.querySelector('textarea').value}));}
+function snapshot(){return {tester:doc.getElementById('tester').value,device:doc.getElementById('device').value,os:doc.getElementById('os').value,browser:doc.getElementById('browser').value,generalNotes:doc.getElementById('generalNotes').value,results:rows(),savedAt:new Date().toISOString()};}
+function save(){const k=key();if(!k)return;try{localStorage.setItem(k,JSON.stringify(snapshot()));statusEl.textContent='Draft saved locally';}catch{statusEl.textContent='Local draft save unavailable';}}
+function restore(){const k=key();if(!k)return;let d=null;try{d=JSON.parse(localStorage.getItem(k)||'null');}catch{}if(!d){statusEl.textContent='Autosave active · no saved draft';return;}doc.getElementById('tester').value=d.tester||'';doc.getElementById('device').value=d.device||'';doc.getElementById('os').value=d.os||'';doc.getElementById('browser').value=d.browser||'';doc.getElementById('generalNotes').value=d.generalNotes||'';doc.getElementById('attest').checked=false;const m=new Map((d.results||[]).map(x=>[x.id,x]));doc.querySelectorAll('#tests .test').forEach(r=>{const v=m.get(r.dataset.id);if(v){r.querySelector('select').value=v.status||'NOT_TESTED';r.querySelector('textarea').value=v.notes||'';}});doc.getElementById('tester').dispatchEvent(new Event('input',{bubbles:true}));statusEl.textContent='Saved draft restored · re-attest before export';}
+function schedule(){clearTimeout(saveTimer);saveTimer=setTimeout(save,150);}
+frame.addEventListener('load',()=>{doc=frame.contentDocument;if(!doc){statusEl.textContent='Runner could not be accessed';return;}const target=doc.getElementById('target');if(wanted&&[...target.options].some(o=>o.value===wanted)){target.value=wanted;target.dispatchEvent(new Event('change',{bubbles:true}));}restore();doc.addEventListener('input',schedule,true);target.addEventListener('change',()=>setTimeout(restore,0));addEventListener('pagehide',save);statusEl.textContent=statusEl.textContent||'Autosave active';});
+</script>
+</body>
+</html>
