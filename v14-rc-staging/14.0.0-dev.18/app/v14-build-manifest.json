@@ -1,0 +1,307 @@
+{
+  "schema": "atelier-v14-development-build-v1",
+  "version": "14.0.0-dev.18",
+  "developmentOnly": false,
+  "baseline": {
+    "runtimeRelease": "13.2.0",
+    "productionCommit": "1151f66e58ff4950d7c8ba265834c59d1a46bf5e",
+    "indexSha256": "561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46",
+    "bytes": 1310556
+  },
+  "patchedBaseline": {
+    "indexSha256": "6460b257152cd6933304a20124152b80b014d68a6af752608feb568e85d4e708",
+    "bytes": 1312742
+  },
+  "artifact": {
+    "indexSha256": "e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f",
+    "bytes": 1313289
+  },
+  "patches": [
+    {
+      "id": "shell-notifications-bridge",
+      "source": "patches/notifications-bridge.json",
+      "sourceSha256": "d46f97ae67c853245140294799caf853f889e3160dbd4742595037bde33bf0b1",
+      "changes": [
+        {
+          "id": "announce-bridge",
+          "occurrences": 1,
+          "findSha256": "ab7d89f73afe216b653901fddeac2d664e01486705bdb8215385e82056eb22dd",
+          "replaceSha256": "343df3b25bd880e29d37579a3dda84ed98535dc210042fa2dfbce34e0aa4e00a"
+        },
+        {
+          "id": "toast-bridge",
+          "occurrences": 1,
+          "findSha256": "37a86609d99a7e5309b9f10e2ba36d2d662e763b77a5847c0b16cfa9511f529e",
+          "replaceSha256": "7b5bb76bedb22fade6f62ab66553f0632cba263cb9e500dcb5ca1d5e704e5902"
+        },
+        {
+          "id": "status-bridge",
+          "occurrences": 1,
+          "findSha256": "9897bdacf176d799e51dd7e6058066389973557362a56ecbdffc4a7985647374",
+          "replaceSha256": "221849830061eb8f10530dfd3259c646c60a7b6d2ebaefe5a1c48444bb358df8"
+        }
+      ]
+    },
+    {
+      "id": "shell-dialogs-bridge",
+      "source": "patches/dialogs-bridge.json",
+      "sourceSha256": "c87ea33449c2f835ba299f9e4d58416cbc06698349c7757130e6bfa6e06fccae",
+      "changes": [
+        {
+          "id": "open-dialog-bridge",
+          "occurrences": 1,
+          "findSha256": "817e60ec9be6b42e3c25eae9ff3bd47b4c472afa9b0b7dcb61a28c4fe3166f58",
+          "replaceSha256": "d20d02ad536df254b09e99820e4c6fba70159f0f7fc8525b6946cf7fff6a64e7"
+        },
+        {
+          "id": "close-dialog-bridge",
+          "occurrences": 1,
+          "findSha256": "edd89090142102913f1720b6683639b5c82c58721abdee6285fc03836c05991f",
+          "replaceSha256": "cd280fde7d6361a6ec6dbf7846e250192c8f0b47e968fc38917bde211c790de9"
+        },
+        {
+          "id": "confirm-action-bridge",
+          "occurrences": 1,
+          "findSha256": "58104ed63efb5f5c1ba1a6e99adc4bbb8767be10c4ef43e4035f177d550576c3",
+          "replaceSha256": "c670873041742675afb70bba97b9adfd170885e94cd74cda64a2fa94199f9125"
+        }
+      ]
+    },
+    {
+      "id": "shell-commands-bridge",
+      "source": "patches/commands-bridge.json",
+      "sourceSha256": "61d8b03be62943df0dfc30c3b92cc8ea32fd21efa2b2ef726e650c573aedb94a",
+      "changes": [
+        {
+          "id": "commands-dialog-bridge",
+          "occurrences": 1,
+          "findSha256": "62fbd534def8d8cd14abea2cbefc419c058575fc06102b0a0d9d601c83ba079f",
+          "replaceSha256": "43324646ced4a98a00744355a7f058162eae31714d9e87e8d5b948dcc6be53f4"
+        },
+        {
+          "id": "commands-render-bridge",
+          "occurrences": 1,
+          "findSha256": "d78a5d7168d971f88916ed31af0e99243971c35d76aeca0aecb91c4ff6c97709",
+          "replaceSha256": "1738f04b5fc9dbdba896cf6c6b6b9810f91f0337adf7c1041c002ff22fc9dc51"
+        }
+      ]
+    },
+    {
+      "id": "shell-files-bridge",
+      "source": "patches/files-bridge.json",
+      "sourceSha256": "5d7f23bc1ab76abb1d17fca2bcdfeb191cd9090558bdf024ae39306aedc53982",
+      "changes": [
+        {
+          "id": "download-file-bridge",
+          "occurrences": 1,
+          "findSha256": "5bcba25974b472dfea1bdf7799f530599e34d13228d5298afe67da4e7e16f25d",
+          "replaceSha256": "be39ff06a2310ec4100eeb3de1d6c7b5696e3d684137e5fa0a6ca64fc99a173a"
+        },
+        {
+          "id": "safe-name-bridge",
+          "occurrences": 1,
+          "findSha256": "b43275bec341fe29dfdff128bee10c1974cc2d903bcf6fe29529155c1cefe71a",
+          "replaceSha256": "35095e884f09f82f6ea4acac8386bcef68cfb212dddbe565361a5b9a3c4fa63a"
+        }
+      ]
+    },
+    {
+      "id": "shell-icons-bridge",
+      "source": "patches/icons-bridge.json",
+      "sourceSha256": "35048d3ec2fad2c7f9fa2634baa5ba78a9b8da3e26b3e2b62617c84754f8766e",
+      "changes": [
+        {
+          "id": "icon-renderer-bridge",
+          "occurrences": 1,
+          "findSha256": "ee302b51ac82220faafb3603899eba3ef00e608f2a8b86ce54ef330c54176795",
+          "replaceSha256": "ca15f36ff6c1aaecc826b4ce876b04f62af16f0232960ddc30c78369fcf866c5"
+        }
+      ]
+    },
+    {
+      "id": "shell-text-bridge",
+      "source": "patches/text-bridge.json",
+      "sourceSha256": "fc3f7da21f9fc9697b1094a66fd5f30eea668fb7e5e0c0568f4a8cfd560c16c2",
+      "changes": [
+        {
+          "id": "html-escape-bridge",
+          "occurrences": 1,
+          "findSha256": "63f8a3a3cced1ba5c24bba5747b34148af4313ecb652d7a192b1a47637e68ae4",
+          "replaceSha256": "a3ad0c2127513d1834ef9bcc44af12a4720f2aaed93a20cad2dd76e38ca25893"
+        },
+        {
+          "id": "svg-escape-bridge",
+          "occurrences": 1,
+          "findSha256": "39513e14f934c78db4867a96901adf32ceeba5aa6aaed9a1cc3e789823fc9da6",
+          "replaceSha256": "2673f9458bd56e07a08302bb57347844f750d241275d3c8c4224c3b97de45625"
+        },
+        {
+          "id": "plan-xml-escape-bridge",
+          "occurrences": 1,
+          "findSha256": "7d89d5294ca6e0e857df576412b11ca687edb8c52f10f3cb777380d676c51083",
+          "replaceSha256": "675608f55681f389195dba363108bbf1acbfc9519a4ba1b388c3ce58af0c20e9"
+        },
+        {
+          "id": "xml-escape-bridge",
+          "occurrences": 1,
+          "findSha256": "bd316565fca9a1174c5259758bcbfcc6a2e2e70ada6029b838945ad3a9cb68ce",
+          "replaceSha256": "d8d48549a9345a059767755f91c152c0006e95c5ab64a7d6eafcdbc57e2e7b85"
+        }
+      ]
+    },
+    {
+      "id": "shell-units-bridge",
+      "source": "patches/units-bridge.json",
+      "sourceSha256": "a664ac978c840fb2f2a3889b70cca1cad22f1ab29081fe0a759eda3e17cb215b",
+      "changes": [
+        {
+          "id": "dimension-formatting-bridge",
+          "occurrences": 1,
+          "findSha256": "ad58caca30029409690c1955d332a55ffc7927c4ae4dbaeac70719fb317d80c4",
+          "replaceSha256": "bcb56a129ab9b53f3f15bf1bc4cf986cb2506e962c8d62866f0938ac557319e7"
+        }
+      ]
+    }
+  ],
+  "styles": [
+    "dev-status/dev-status.css"
+  ],
+  "modules": [
+    "shell/notifications.js",
+    "shell/dialogs.js",
+    "shell/commands.js",
+    "shell/files.js",
+    "shell/icons.js",
+    "shell/text.js",
+    "shell/units.js",
+    "dev-status/dev-status.js"
+  ],
+  "assets": [
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/dev-status/dev-status.css",
+      "output": "v14/dev-status/dev-status.css",
+      "bytes": 1474,
+      "sha256": "7dd56e01ee30527b6ad5968f209d417b57d8cfdb01670e52b9894332b4722e11"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/notifications.js",
+      "output": "v14/shell/notifications.js",
+      "bytes": 1387,
+      "sha256": "2d8a789ab098959b64d9051854d5bc870abe102febc2f5e7acfdbc98e54a8398"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/dialogs.js",
+      "output": "v14/shell/dialogs.js",
+      "bytes": 2775,
+      "sha256": "ab8108b13c904b997c52eca870cfd7b47e34adb0f4e7ca90489e6194c725bccc"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/commands.js",
+      "output": "v14/shell/commands.js",
+      "bytes": 2637,
+      "sha256": "77cb8a9aca98c78f1654d7d51ecf198b1717a59fa3ecffef6836291bcb889897"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/files.js",
+      "output": "v14/shell/files.js",
+      "bytes": 1210,
+      "sha256": "84aa60aa5ebbfaeb8a14a0c49d76e7518e020e6f75ebc4c1327fcdaf042d47f7"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/icons.js",
+      "output": "v14/shell/icons.js",
+      "bytes": 778,
+      "sha256": "6066550ee8d950bc6d0b83efe38f0ca109ed827ac8410c7afd6700d372b275ad"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/text.js",
+      "output": "v14/shell/text.js",
+      "bytes": 851,
+      "sha256": "8eecda2837d10e41397cad3613b73ed64d25cfa5c6c828b032fd94e4db9af836"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/shell/units.js",
+      "output": "v14/shell/units.js",
+      "bytes": 766,
+      "sha256": "89e100e36bf4d892bf630fa1b559f63f82a362a2cdbf0f24b1b1e85142202f83"
+    },
+    {
+      "source": "/home/runner/work/atelier/atelier/src/v14/dev-status/dev-status.js",
+      "output": "v14/dev-status/dev-status.js",
+      "bytes": 3392,
+      "sha256": "34720901ca2294e20a74cf393e04a45f98c06d7f81eb38aa0e7c426b289a8ff4"
+    }
+  ],
+  "passthrough": [
+    {
+      "source": ".nojekyll",
+      "output": ".nojekyll",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "source": "manifest.webmanifest",
+      "output": "manifest.webmanifest",
+      "bytes": 633,
+      "sha256": "8972e73df400411f7608aa78f349329fe8e80b87bddf788474cc8ab0d65e31e3"
+    },
+    {
+      "source": "icon-192.png",
+      "output": "icon-192.png",
+      "bytes": 500,
+      "sha256": "a7f590777eb0d67d732c9c1110dbab579a73757c74963b6eb09714ef8c483691"
+    },
+    {
+      "source": "icon-512.png",
+      "output": "icon-512.png",
+      "bytes": 1585,
+      "sha256": "6508ed8a3f6d5e984b658d42898cfbc2811867db2e7e509b45735c108bba279a"
+    }
+  ],
+  "serviceWorker": {
+    "source": "sw.js",
+    "output": "sw.js",
+    "sourceSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
+    "outputSha256": "ddf9f7a4d9666a0788145e2a47eb88edd739b1f1dc21b7a51f5b289177c01ae4",
+    "release": "14.0.0-dev.18",
+    "cache": "atelier-v14-rc-14.0.0-dev.18",
+    "cachePrefix": "atelier-v14-rc-",
+    "baselineCachePrefix": "atelier-space-studio-",
+    "stalePrefixReplacements": 2,
+    "ownCacheLookupOnly": true,
+    "cacheLookupIsolationReplacements": 3,
+    "core": [
+      "./",
+      "./index.html",
+      "./manifest.webmanifest",
+      "./icon-192.png",
+      "./icon-512.png",
+      "./v14/shell/notifications.js",
+      "./v14/shell/dialogs.js",
+      "./v14/shell/commands.js",
+      "./v14/shell/files.js",
+      "./v14/shell/icons.js",
+      "./v14/shell/text.js",
+      "./v14/shell/units.js"
+    ]
+  },
+  "artifactKind": "release-candidate",
+  "productionEligible": false,
+  "diagnosticsStripped": true,
+  "certificationGate": {
+    "sourceMilestone": "13.3.1",
+    "priorRuntime": "13.2.0",
+    "priorFinalSignoff": "blocked",
+    "runtimeMayAdvanceToV14": false,
+    "physicalEvidence": {
+      "valid": 0,
+      "required": 5
+    },
+    "promotionEligible": false,
+    "blockers": [
+      "prior-final-signoff-not-pass",
+      "runtime-advance-not-authorized",
+      "physical-evidence-incomplete"
+    ]
+  }
+}

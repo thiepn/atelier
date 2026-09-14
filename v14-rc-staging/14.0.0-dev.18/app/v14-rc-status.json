@@ -1,0 +1,27 @@
+{
+  "schema": "atelier-v14-release-candidate-status-v1",
+  "version": "14.0.0-dev.18",
+  "artifactKind": "release-candidate",
+  "diagnosticsStripped": true,
+  "ownCacheLookupOnly": true,
+  "productionEligible": false,
+  "certificationGate": {
+    "sourceMilestone": "13.3.1",
+    "priorRuntime": "13.2.0",
+    "priorFinalSignoff": "blocked",
+    "runtimeMayAdvanceToV14": false,
+    "physicalEvidence": {
+      "valid": 0,
+      "required": 5
+    },
+    "promotionEligible": false,
+    "blockers": [
+      "prior-final-signoff-not-pass",
+      "runtime-advance-not-authorized",
+      "physical-evidence-incomplete"
+    ]
+  },
+  "indexSha256": "e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f",
+  "serviceWorkerSha256": "ddf9f7a4d9666a0788145e2a47eb88edd739b1f1dc21b7a51f5b289177c01ae4",
+  "cache": "atelier-v14-rc-14.0.0-dev.18"
+}
