@@ -4,7 +4,7 @@ This directory is the home for authored V14 code.
 
 ## Current checkpoint
 
-**14.0.0-dev.8** is the current V14 development artifact. It is isolated from production and is not a V13.3.1 production certification result.
+**14.0.0-dev.9** is the current V14 development artifact. It is isolated from production and is not a V13.3.1 production certification result.
 
 ## Build
 
@@ -14,38 +14,18 @@ The root `index.html` remains the locked Atelier 13.2.0 baseline. V14 modules ar
 python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir dist --force
 ```
 
-The builder:
+The builder verifies the frozen baseline, applies exact occurrence-checked bridges, injects ordered V14 assets, copies declared passthrough assets, emits a hashed `v14-build-manifest.json`, and never rewrites the root `index.html`.
 
-- verifies the frozen baseline through `src/source.lock.json`;
-- rejects duplicate V14 injection markers;
-- validates module, patch and passthrough paths and blocks path traversal;
-- applies exact legacy bridges with fail-closed occurrence counts;
-- injects V14 styles before `</head>` and modules before `</body>`;
-- copies declared V14 and passthrough assets;
-- writes `v14-build-manifest.json` with baseline, patched-baseline, patch, artifact and asset hashes;
-- never modifies the root `index.html`.
+## Current V14 modules
 
-## Layout
-
-- `manifest.json` — authoritative development version, ordered styles, modules, bridges and runtime assets.
-- `patches/notifications-bridge.json` — legacy announcement/toast/status delegation.
-- `patches/dialogs-bridge.json` — legacy modal/open/close/confirm delegation.
-- `patches/commands-bridge.json` — legacy command-palette opening/render delegation.
-- `patches/files-bridge.json` — legacy download and safe-filename delegation.
-- `shell/notifications.js` — accessibility announcements, toasts and save/status messaging.
+- `shell/notifications.js` — announcements, toasts and save/status messaging.
 - `shell/dialogs.js` — generic modal rendering, focus and confirmation composition.
 - `shell/commands.js` — command-palette opening, search and result rendering.
 - `shell/files.js` — browser downloads and safe filename normalization.
+- `shell/icons.js` — SVG icon serialization using the locked legacy icon registry supplied through the bridge.
 - `dev-status/` — isolated V14 development diagnostics.
-- `../../tools/v14-playwright.config.js` — Chromium desktop/mobile, Firefox and WebKit integration matrix.
-- `../../tools/v14-shell-smoke.spec.js` — integrated responsive/accessibility shell gate.
-- `../../tools/v14-offline-pwa.spec.js` — service-worker-controlled offline development-artifact gate.
 
-## Bridge rules
-
-A bridge is accepted only when its exact legacy source occurs the declared number of times. If the baseline changes unexpectedly, the build stops rather than applying an approximate patch.
-
-Bridged functions keep their original implementation as fallback. Modules return `false` when an adapter or required DOM surface is unavailable so the legacy path can still execute. Private IIFE state is passed through narrow callbacks rather than exposed globally.
+Exact bridges live under `patches/` for each migrated legacy helper.
 
 ## Automated validation
 
@@ -54,20 +34,18 @@ The V14 workflow currently performs:
 1. source-tool unit tests;
 2. overlay-build/patch-engine unit tests;
 3. JavaScript syntax checks for every V14 module and browser-test file;
-4. independent behavior tests for notifications, dialogs, commands and file utilities;
+4. independent behavior tests for notifications, dialogs, commands, files and icons;
 5. exact 13.2.0 baseline lock verification;
 6. byte-for-byte source round-trip verification;
-7. real development artifact generation and manifest/bridge validation;
-8. Chromium desktop integration smoke;
-9. Chromium 390×844 mobile/touch integration smoke;
-10. Firefox desktop integration smoke;
-11. WebKit desktop integration smoke;
+7. generated development artifact and bridge validation;
+8. Chromium desktop integration;
+9. Chromium 390×844 mobile/touch integration;
+10. Firefox desktop integration;
+11. WebKit desktop integration;
 12. responsive horizontal-overflow checks;
 13. keyboard, Escape, focus-restoration and shell accessibility checks;
 14. controlled Chromium offline/PWA reload verification;
 15. hashed artifact upload.
-
-The integration suite drives actual legacy keyboard/action paths through the V14 bridges rather than testing modules only in isolation.
 
 ## Current ownership boundary
 
@@ -76,11 +54,13 @@ V14 owns post-bootstrap generic shell behavior for:
 - notifications/status;
 - modal/dialog DOM behavior;
 - command-palette presentation/search;
-- browser file delivery/naming.
+- browser file delivery/naming;
+- SVG icon serialization.
 
 The legacy runtime still owns:
 
 - command execution;
+- icon path registry data;
 - project persistence;
 - backup semantics;
 - project schema;
@@ -100,4 +80,4 @@ The legacy runtime still owns:
 
 ## Next milestone
 
-Dev.9 should move from generic shell infrastructure to the **next low-state, high-isolation legacy boundary**, selected by testability and dependency surface. Persistence, project schema, geometry and rendering should remain untouched unless a concrete V14 requirement justifies their migration.
+Dev.10 should target another **pure, security-relevant presentation helper** rather than application state. The preferred candidate is HTML/text escaping, because it has a narrow deterministic contract, is broadly reused by shell presentation code, and can be migrated with an exact fallback without touching projects, persistence, geometry or rendering.
