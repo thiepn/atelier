@@ -1,5 +1,5 @@
 {
-  "schema": "atelier-v14-rc-cutover-plan-v1",
+  "schema": "atelier-v14-rc-cutover-plan-v2",
   "milestone": "14.0.0-rc-certification",
   "productionOrigin": "https://thiepn.github.io/atelier/",
   "promotionPolicy": {
@@ -13,12 +13,19 @@
     "automaticPromotionAllowed": false
   },
   "staging": {
-    "status": "not-provisioned",
+    "status": "live-https-verified",
+    "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/app/",
+    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.18",
+    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/staging-status.json",
     "httpsRequired": true,
     "sameOriginRuntimeRequired": true,
+    "versionedPathRequired": true,
+    "preservePriorCandidates": true,
+    "runnerCacheBustRequired": true,
     "mustServeExactRcIndexHash": true,
     "mustServeExactRcServiceWorkerHash": true,
     "mustExposeRcCacheIdentity": true,
+    "productionRootRuntimeMustRemainImmutable": true,
     "productionOriginUseBlockedUntilPriorReleaseSignoff": true
   },
   "physicalAcceptance": {
@@ -53,7 +60,7 @@
   "currentState": {
     "priorReleaseSignoff": "blocked",
     "rcPhysicalEvidence": "0/5",
-    "stagingOrigin": "missing",
+    "stagingOrigin": "live-https-verified",
     "productionCutover": "blocked",
     "rollbackCertification": "not-run"
   }
