@@ -2,11 +2,11 @@
 
 ## Status
 
-Current validated checkpoint: **14.0.0-dev.17**.
+Current audited checkpoint: **14.0.0-dev.19**.
 
 V14 is an uncertified successor-development line on `v14-development`. Production remains Atelier **13.2.0** at `https://thiepn.github.io/atelier/`.
 
-The application architecture is frozen. Dev.13–dev.17 are stabilization, packaging and certification milestones; they do not move additional application ownership.
+The application architecture is frozen at **8 modules and 7 exact legacy bridges**. Dev.13 onward is stabilization/release infrastructure; persistence, schema, geometry, rendering, catalog state and command execution remain legacy-owned.
 
 ## Frozen application boundary
 
@@ -21,77 +21,82 @@ The application architecture is frozen. Dev.13–dev.17 are stabilization, packa
 7. `shell/units.js`
 8. `dev-status/dev-status.js` — development packaging only
 
-### Exact legacy bridges
+### Exact bridges
 
-Seven bridges remain frozen: notifications, dialogs, commands, files, icons, text escaping and dimension formatting.
+Seven exact bridges remain: notifications, dialogs, commands, files, icons, text escaping and dimension formatting.
 
-Legacy Atelier 13.2.0 remains authoritative for persistence/backups, schema/normalization, geometry/precision, 2D/3D rendering, catalog/application state, command execution, project identity, numeric editing/stored unit state and domain export semantics.
+No new bridge or stateful ownership migration is permitted during stabilization.
 
-## Artifact pipeline
+## Build and certification pipeline
 
 ```text
-frozen Atelier 13.2.0 index.html + sw.js
+frozen 13.2.0 index.html + sw.js
         │
-        ├── source-lock verification
-        └── byte-for-byte reconstruction
+        ├── source-lock + byte-for-byte reconstruction
+        ├── exact bridges
         ▼
-tools/v14_build.py
+v14-dist (development)
+        │  atelier-v14-dev-*
+        │  own-cache-only worker reads
+        ▼
+v14-rc (stripped release candidate)
+        │  atelier-v14-rc-*
+        │  no dev diagnostics
+        │  productionEligible=false
+        ▼
+versioned immutable staging package
         │
-        ├── exact bridge application
-        ├── frozen development modules
-        └── atelier-v14-dev-* worker/cache
+        ├── exact RC hashes
+        ├── generated physical runner
+        ├── staging-status.json
         ▼
-v14-dist
+v14-rc-staging/<version>/
         │
-        ▼
-tools/v14_rc_package.py
-        │
-        ├── remove dev-status
-        ├── remove diagnostics from offline core
-        └── atelier-v14-rc-* worker/cache
-        ▼
-v14-rc
-        │
-        ▼
-tools/v14_staging_package.py
-        │
-        ├── verify exact RC index/SW hashes
-        ├── copy exact RC to v14-rc-staging/app/
-        ├── generate physical acceptance runner
-        └── emit staging-status.json
-        ▼
-HTTPS staging subtree on GitHub Pages
+        ├── live HTTPS verification
+        ├── physical-device evidence
+        ├── prior-release gate
+        ├── production update/recovery
+        └── rollback/data-preservation certification
 ```
 
-None of these steps replaces the production root runtime.
+Production promotion is never automatic.
 
-## Dev.17 HTTPS staging topology
+## Service-worker cache isolation
 
-Production and staging share the GitHub Pages host but use different paths:
+The audit identified a cross-cache correctness risk caused by origin-wide `caches.match(...)` calls. Production and V14 staging share one origin, so a response cached by the frozen production worker could otherwise be returned to a V14 worker.
 
-- production: `https://thiepn.github.io/atelier/`
-- staged RC: `https://thiepn.github.io/atelier/v14-rc-staging/app/`
-- physical runner: `https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html`
-- staging identity: `https://thiepn.github.io/atelier/v14-rc-staging/staging-status.json`
+Dev.18/19 hardening therefore requires:
 
-The staging service worker is physically located below `v14-rc-staging/app/`; its normal scope is therefore the candidate subtree, not the production root.
+- all V14 runtime reads use the worker's own named cache;
+- generated workers contain no residual `caches.match(...)` reads;
+- production cache namespaces remain preserved but unread by V14;
+- a browser regression deliberately poisons the production cache and proves V14 never consumes the poisoned response;
+- RC status records `ownCacheLookupOnly: true`.
 
-Staging publication changes only `v14-rc-staging/**` on `main`. Before and after publication CI checks the production root against the frozen 13.2.0 hashes.
+This is a packaging/runtime-isolation fix, not an application ownership migration.
 
-## Exact dev.17 candidate
+## Immutable staging topology
 
-- version: `14.0.0-dev.17`
-- cache: `atelier-v14-rc-14.0.0-dev.17`
+Current candidate:
+
+- app: `https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/app/`
+- runner: `https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/acceptance.html?v=14.0.0-dev.19`
+- status: `https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/staging-status.json`
+
+Identity:
+
+- RC version: `14.0.0-dev.19`
 - index SHA-256: `e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f`
-- service-worker SHA-256: `bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043`
+- service-worker SHA-256: `796f11fe4d8a5142b94a28600a5fb7cccf24039c6f73fc4f77879121121aa7e3`
+- cache: `atelier-v14-rc-14.0.0-dev.19`
 
-The physical runner independently fetches the staged index/SW and requires both hashes to match before evidence can be exported.
+Each candidate is stored under its versioned directory and cannot be overwritten with different bytes. Dev.18 and dev.19 remain preserved. The obsolete unversioned dev.17 alias was removed after the dev.19 audit.
 
-## Physical acceptance contract
+The frozen production root is checked before publication and independently over public HTTPS after publication.
 
-The acceptance plan is `acceptance/v14-rc-required-targets.json`.
+## Physical evidence contract v3
 
-Required targets:
+The five required real targets remain:
 
 1. Firefox Desktop
 2. Safari macOS
@@ -99,84 +104,107 @@ Required targets:
 4. Safari iPad / Home Screen Web App
 5. Chrome Android Installed PWA
 
-Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v2`.
+Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v3`.
 
-Every real evidence file binds the candidate version, index hash, service-worker hash, RC cache identity, staging host origin, exact staged candidate URL, exact runner URL, device/browser metadata, target results and tester attestation. A deterministic fingerprint detects modification after export.
+Each evidence file binds:
 
-The runner never auto-marks a physical test PASS. CI-generated synthetic evidence is tooling-only and never counts toward physical readiness.
+- RC version;
+- index/SW SHA-256;
+- RC cache identity;
+- candidate origin;
+- exact immutable candidate URL;
+- exact cache-busted runner URL;
+- exact staging-status URL;
+- target label/id;
+- device/OS/browser/tester metadata;
+- timezone-aware capture timestamp;
+- the exact required result set;
+- tester attestation;
+- deterministic evidence fingerprint.
 
-## Readiness separation
+The validator rejects missing/extra/duplicate results, wrong candidate paths, wrong target labels, malformed timestamps and tampered fingerprints.
 
-V14 deliberately keeps these states independent:
+Generated report/signoff output paths are excluded from subsequent evidence scans, making validation idempotent without ignoring arbitrary malformed JSON.
 
-- **PHYSICAL_READY** — all five genuine V14 RC targets pass.
-- **PRIOR_RELEASE_GATE_READY** — V13.3.1 allows runtime advancement to V14.
-- **PROMOTION_READY** — physical, prior-release and later production cutover gates all permit promotion.
+## Promotion-state separation
 
-Staging is allowed before prior-release sign-off. Production promotion is not.
+The release-candidate packager keeps distinct states:
 
-## Cutover and rollback boundary
+- prior-release gate readiness;
+- V14 physical readiness;
+- cutover eligibility;
+- final production promotion readiness.
 
-`acceptance/v14-rc-cutover-plan.json` still requires before production promotion:
+The RC itself always reports `productionEligible: false` until the complete production cutover certification exists. Current blockers include both the unresolved V13.3.1 gate and explicit V14 physical/cutover requirements.
 
-- V13.3.1 final sign-off;
-- V14 RC physical sign-off;
-- exact V14 production artifact identity;
-- production HTTPS-origin verification;
-- installed-PWA update recovery;
-- offline cold start after update;
-- rollback to frozen 13.2.0;
-- project data surviving both update and rollback;
-- safe stale-cache cleanup.
+## Browser / device simulation coverage
 
-Automatic promotion is forbidden.
+The automated integration matrix now includes:
 
-## Validation layers
+- Chromium desktop;
+- Chromium mobile/touch;
+- Firefox desktop;
+- WebKit desktop;
+- WebKit phone/touch;
+- WebKit tablet/touch.
 
-1. **Source/build** — source lock, byte-for-byte round trip, exact bridges and deterministic packaging.
-2. **Architecture policy** — frozen modules/patches; stateful migration blocked.
-3. **Module behavior** — independent shell/helper tests.
-4. **Development runtime** — Chromium desktop/mobile, Firefox, WebKit and offline Chromium.
-5. **RC runtime** — diagnostics absent, isolated RC worker/cache, offline RC reload.
-6. **Physical-runner tooling** — automatic candidate hash verification, checklist gating, JSON export and validator compatibility.
-7. **Live HTTPS staging** — public candidate/runner/status fetch, exact RC hash verification and frozen production-root verification.
+Dev.19 corrected a WebKit touch smoke-harness return-contract defect discovered during the audit. All six projects pass in workflow `34895451320`.
 
-Primary dev.17 workflow: **`34885183276` — PASS**.
+Automated WebKit is not a substitute for real Safari physical evidence.
 
-Independent live HTTPS verification: **`34885579138` — PASS**.
+## CI publication boundary
+
+The workflow is split into:
+
+1. a read-only validation/build job; and
+2. a separate write-enabled staging publication job that runs only after validation passes.
+
+The publication job:
+
+- downloads the already-validated staging artifact;
+- checks frozen production root hashes;
+- refuses to overwrite an existing immutable candidate with different bytes;
+- writes only `v14-rc-staging/<version>/`;
+- verifies the public HTTPS candidate and frozen production root afterward.
+
+## Validation checkpoint
+
+Primary audited workflow: **`34895451320` — PASS**.
+
+Passed gates include:
+
+- deterministic source/build tests;
+- migration/stabilization policy;
+- strict evidence validator + output idempotence;
+- fail-closed production promotion;
+- six-browser matrix;
+- development offline PWA;
+- development cross-cache poison regression;
+- RC Chromium/offline/cache isolation;
+- physical-runner browser/export/validator compatibility;
+- immutable staging publication;
+- live HTTPS exact-candidate verification;
+- production root immutability.
 
 ## Milestone history
 
-- dev.1: reproducible source boundary
-- dev.2: deterministic module overlay
-- dev.3: notifications
-- dev.4: command palette
-- dev.5: browser file utilities
-- dev.6: dialog shell
-- dev.7: real-browser shell integration
-- dev.8: cross-browser/responsive/offline gate
-- dev.9: SVG icon renderer
-- dev.10: text escaping
-- dev.11: migration/dependency inventory
-- dev.12: dimension formatting
+- dev.1–dev.12: controlled low-state extraction
 - dev.13: stabilization freeze
-- dev.14: isolated V14 development offline shell
-- dev.15: release-candidate packaging boundary
-- dev.16: RC certification infrastructure
-- **dev.17: HTTPS staging origin & physical evidence capture runner**
+- dev.14: isolated V14 development worker/cache
+- dev.15: RC packaging boundary
+- dev.16: V14 RC certification infrastructure
+- dev.17: live HTTPS staging + physical evidence runner
+- dev.18: cache-isolation / immutable-staging / strict v3 evidence audit hardening
+- **dev.19: expanded WebKit audit, harness correction, validator output idempotence and full audit closeout**
 
 ## Current certification state
 
-Automated/tooling: **PASS**.
+- Automated/tooling: **PASS**
+- HTTPS staging: **LIVE / VERIFIED**
+- Real V14 physical evidence: **0/5**
+- V13.3.1 physical evidence: **0/5**
+- `runtimeMayAdvanceToV14`: **false**
+- V14 production promotion: **BLOCKED**
+- Production runtime: **13.2.0**
 
-HTTPS staging: **LIVE / VERIFIED**.
-
-Real V14 RC physical evidence: **0/5**.
-
-V13.3.1 prior-release gate: **BLOCKED**.
-
-V14 promotion ready: **FALSE**.
-
-Production runtime: **Atelier 13.2.0**.
-
-The next legitimate activity is genuine physical-device evidence capture. Do not invent a dev.18 architecture migration merely to continue the version sequence.
+The next legitimate release work is genuine physical-device evidence and later cutover/rollback certification, not additional application extraction.
