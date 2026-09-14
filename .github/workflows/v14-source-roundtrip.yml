@@ -117,9 +117,10 @@ jobs:
           assert staging['candidateUrl']==dep['url'] and staging['runnerUrl']==dep['runnerUrl'] and staging['statusUrl']==dep['statusUrl']
           assert staging['productionRootRuntimeImmutable'] is True and staging['liveHttpsVerificationRequired'] is True
           assert cutover['schema']=='atelier-v14-rc-cutover-plan-v2'
-          assert cutover['staging']['status']=='pending-publication'
-          assert cutover['currentState']['stagingOrigin']=='pending-publication'
-          assert cutover['currentState']['productionCutover']=='blocked'
+          assert cutover['staging']['requirement']=='live-https-verification-before-physical-evidence'
+          assert cutover['staging']['operationalStateSource']=='CERTIFICATION_MATRIX_14.0.0-rc.json'
+          assert cutover['statePolicy']['operationalStateMustBeRecordedInCertificationMatrix'] is True
+          assert cutover['statePolicy']['productionCutoverDefault']=='blocked'
           print('V14_DEV19_POLICY_OK=true targets=5 immutable_staging=true own_cache_only=true promotion_fail_closed=true')
           PY
 
