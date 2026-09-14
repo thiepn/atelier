@@ -1,0 +1,17 @@
+{
+  "schema": "atelier-v14-module-manifest-v1",
+  "version": "14.0.0-dev.2",
+  "styles": [
+    "dev-status/dev-status.css"
+  ],
+  "modules": [
+    "dev-status/dev-status.js"
+  ],
+  "passthrough": [
+    ".nojekyll",
+    "manifest.webmanifest",
+    "sw.js",
+    "icon-192.png",
+    "icon-512.png"
+  ]
+}
