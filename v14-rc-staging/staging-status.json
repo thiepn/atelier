@@ -4,7 +4,7 @@
   "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/app/",
   "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html",
   "productionUrl": "https://thiepn.github.io/atelier/",
-  "sourceRevision": "7e98d1a9d932177bd9b9058bb28077dee3e331c9",
+  "sourceRevision": "dc6398e4c2ea5841a98c3fd8311ac19d1298084b",
   "rcIndexSha256": "e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f",
   "rcServiceWorkerSha256": "bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043",
   "rcCache": "atelier-v14-rc-14.0.0-dev.17",
