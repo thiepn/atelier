@@ -93,6 +93,11 @@ def validate_inventory(data: dict) -> dict:
         require(rc_policy.get("cachePrefix") != worker_policy.get("cachePrefix"), "release-candidate cachePrefix must differ from development cachePrefix")
         require(rc_policy.get("certificationMatrix") == "CERTIFICATION_MATRIX_13.3.1.json", "release-candidate packaging must bind the 13.3.1 certification matrix")
         require(rc_policy.get("requirePriorSignoffBeforePromotion") is True, "release-candidate promotion must require prior signoff")
+        require(rc_policy.get("physicalAcceptancePlan") == "acceptance/v14-rc-required-targets.json", "unexpected RC physical acceptance plan")
+        require(rc_policy.get("physicalAcceptanceValidator") == "acceptance/validate_v14_rc_acceptance.py", "unexpected RC physical acceptance validator")
+        require(rc_policy.get("cutoverPlan") == "acceptance/v14-rc-cutover-plan.json", "unexpected RC cutover plan")
+        require(rc_policy.get("allowPhysicalEvidenceBeforePriorSignoff") is True, "RC physical evidence must be collectable before prior signoff")
+        require(rc_policy.get("allowPromotionBeforePriorSignoff") is False, "RC promotion must remain blocked before prior signoff")
     else:
         require(stabilization is None, "migration phase must not carry a stabilization freeze")
 
@@ -204,6 +209,7 @@ def main() -> None:
         f"frozen_patches={len(result['frozenPatches'])} "
         f"worker_mode={(result['serviceWorker'] or {}).get('mode', 'none')} "
         f"rc_packaging={str(rc.get('enabled', False)).lower()} "
+        f"rc_physical_plan={rc.get('physicalAcceptancePlan', 'none')} "
         f"boundaries={result['boundaryCount']} "
         f"blocked={result['blockedCount']} "
         f"deferred={result['deferredCount']}"
