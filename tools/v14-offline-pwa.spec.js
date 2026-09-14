@@ -1,8 +1,6 @@
 const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.V14_SMOKE_URL || 'http://127.0.0.1:4173/';
-const V14_RELEASE = '14.0.0-dev.15';
-const V14_CACHE = `atelier-v14-dev-${V14_RELEASE}`;
 const BASELINE_CACHE = 'atelier-space-studio-13.2.0';
 const STALE_V14_CACHE = 'atelier-v14-dev-stale-probe';
 const V14_CORE = [
@@ -81,6 +79,15 @@ test('generated V14 artifact uses an isolated offline shell and survives reload'
   });
 
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  const buildManifest = await page.evaluate(async () => {
+    const response = await fetch('./v14-build-manifest.json', { cache: 'no-store' });
+    if (!response.ok) throw new Error(`build manifest HTTP ${response.status}`);
+    return response.json();
+  });
+  const V14_RELEASE = buildManifest.version;
+  const V14_CACHE = `atelier-v14-dev-${V14_RELEASE}`;
+  expect(buildManifest.developmentOnly).toBe(true);
+
   await waitForV14Shell(page);
   await normalizeDialog(page);
   await waitForControlledServiceWorker(page);
