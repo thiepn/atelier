@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.14",
+  "version": "14.0.0-dev.15",
   "policy": {
     "phase": "stabilization",
     "excludedByDefault": [
@@ -44,6 +44,13 @@
         "cachePrefix": "atelier-v14-dev-",
         "preserveBaselineCaches": true,
         "precacheV14Assets": true
+      },
+      "releaseCandidatePackaging": {
+        "enabled": true,
+        "stripDevelopmentDiagnostics": true,
+        "cachePrefix": "atelier-v14-rc-",
+        "certificationMatrix": "CERTIFICATION_MATRIX_13.3.1.json",
+        "requirePriorSignoffBeforePromotion": true
       }
     }
   },
