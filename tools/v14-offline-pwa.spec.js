@@ -8,7 +8,8 @@ async function waitForV14Shell(page) {
     globalThis.AtelierV14Shell?.dialogs &&
     globalThis.AtelierV14Shell?.commands &&
     globalThis.AtelierV14Shell?.files &&
-    globalThis.AtelierV14Shell?.icons
+    globalThis.AtelierV14Shell?.icons &&
+    globalThis.AtelierV14Shell?.text
   ));
 }
 
@@ -74,7 +75,7 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
   const v14Resources = await page.evaluate(() => performance.getEntriesByType('resource')
     .map((entry) => entry.name)
     .filter((name) => name.includes('/v14/')));
-  expect(v14Resources.length).toBeGreaterThanOrEqual(6);
+  expect(v14Resources.length).toBeGreaterThanOrEqual(7);
 
   await context.setOffline(true);
   try {
@@ -93,8 +94,11 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
     await expect(page.locator('[data-v14-field="serviceWorker"]')).toHaveText('controlled');
     await expect(page.locator('[data-v14-field="baseline"]')).toHaveText('Atelier 13.2.0');
 
-    const iconVersion = await page.evaluate(() => globalThis.AtelierV14Shell.icons.version);
-    expect(iconVersion).toBe('14.0.0-dev.9');
+    const shellVersions = await page.evaluate(() => ({
+      icons: globalThis.AtelierV14Shell.icons.version,
+      text: globalThis.AtelierV14Shell.text.version,
+    }));
+    expect(shellVersions).toEqual({ icons: '14.0.0-dev.9', text: '14.0.0-dev.10' });
 
     const offlineStatus = await serviceWorkerStatus(page);
     expect(offlineStatus.ready).toBe(true);
