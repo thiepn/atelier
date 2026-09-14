@@ -18,7 +18,7 @@ class MigrationInventoryTests(unittest.TestCase):
 
     def test_repository_inventory_is_valid_stabilization(self):
         result = validate_inventory(copy.deepcopy(self.base))
-        self.assertEqual(result["version"], "14.0.0-dev.13")
+        self.assertEqual(result["version"], "14.0.0-dev.14")
         self.assertEqual(result["phase"], "stabilization")
         self.assertFalse(result["selectionRequired"])
         self.assertIsNone(result["selected"])
@@ -26,6 +26,10 @@ class MigrationInventoryTests(unittest.TestCase):
         self.assertEqual(result["currentCompleted"], [])
         self.assertEqual(len(result["frozenModules"]), 8)
         self.assertEqual(len(result["frozenPatches"]), 7)
+        self.assertEqual(result["serviceWorker"]["mode"], "isolated-development")
+        self.assertEqual(result["serviceWorker"]["cachePrefix"], "atelier-v14-dev-")
+        self.assertTrue(result["serviceWorker"]["preserveBaselineCaches"])
+        self.assertTrue(result["serviceWorker"]["precacheV14Assets"])
         self.assertGreaterEqual(result["blockedCount"], 4)
 
     def migration_copy(self):
@@ -45,7 +49,7 @@ class MigrationInventoryTests(unittest.TestCase):
         candidate = data["boundaries"][1]
         candidate.update({
             "decision": "selected-next",
-            "targetMilestone": "14.0.0-dev.14",
+            "targetMilestone": "14.0.0-dev.15",
             "stateRisk": "low",
             "mutationRisk": "none",
             "browserCoupling": "none",
@@ -66,6 +70,24 @@ class MigrationInventoryTests(unittest.TestCase):
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
+    def test_stabilization_requires_isolated_worker_mode(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["serviceWorker"]["mode"] = "inherited"
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_stabilization_requires_baseline_cache_preservation(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["serviceWorker"]["preserveBaselineCaches"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_stabilization_requires_v14_precache(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["serviceWorker"]["precacheV14Assets"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
     def test_selection_required_needs_exactly_one_candidate(self):
         data = self.migration_copy()
         data["policy"]["selectionRequired"] = True
@@ -81,7 +103,7 @@ class MigrationInventoryTests(unittest.TestCase):
         for boundary in data["boundaries"][1:3]:
             boundary.update({
                 "decision": "selected-next",
-                "targetMilestone": "14.0.0-dev.14",
+                "targetMilestone": "14.0.0-dev.15",
                 "stateRisk": "low",
                 "mutationRisk": "none",
                 "browserCoupling": "none",
@@ -99,7 +121,7 @@ class MigrationInventoryTests(unittest.TestCase):
         blocked = next(b for b in data["boundaries"] if b["ownership"] == "project-persistence")
         blocked.update({
             "decision": "selected-next",
-            "targetMilestone": "14.0.0-dev.14",
+            "targetMilestone": "14.0.0-dev.15",
             "stateRisk": "low",
             "mutationRisk": "none",
             "browserCoupling": "none",
@@ -117,7 +139,7 @@ class MigrationInventoryTests(unittest.TestCase):
         candidate = data["boundaries"][1]
         candidate.update({
             "decision": "selected-next",
-            "targetMilestone": "14.0.0-dev.14",
+            "targetMilestone": "14.0.0-dev.15",
             "stateRisk": "low",
             "mutationRisk": "indirect",
             "browserCoupling": "none",
