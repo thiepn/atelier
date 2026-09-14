@@ -1,8 +1,78 @@
-# Atelier V13.3 / V13.3.1 Physical Device Acceptance
+# Atelier Physical Acceptance
 
-V13.3 and V13.3.1 are **certification milestones** for the already-deployed Atelier **13.2.0 runtime**. The production runtime is intentionally byte-frozen while real-device evidence is collected.
+This directory contains two separate real-device certification tracks:
 
-## Runtime lock
+1. **V13.3 / V13.3.1** — certification of the deployed Atelier 13.2.0 production runtime.
+2. **V14 RC** — physical testing of the staged V14 release candidate. This does not authorize production promotion by itself.
+
+## V14 RC — dev.17
+
+### Live runner
+
+`https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html`
+
+### Exact staged candidate
+
+`https://thiepn.github.io/atelier/v14-rc-staging/app/`
+
+Current identity:
+
+- version: `14.0.0-dev.17`
+- cache: `atelier-v14-rc-14.0.0-dev.17`
+- index SHA-256: `e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f`
+- service-worker SHA-256: `bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043`
+
+The live runner verifies the index and service-worker hashes itself before evidence can become ready.
+
+### Required V14 targets
+
+1. Firefox Desktop
+2. Safari macOS
+3. Safari iPhone / Home Screen Web App
+4. Safari iPad / Home Screen Web App
+5. Chrome Android Installed PWA
+
+For each real target:
+
+1. open the live V14 runner;
+2. confirm automatic candidate identity verification passes;
+3. open the staged RC using the runner link;
+4. perform every target-specific check on the actual browser/device;
+5. record PASS or FAIL truthfully;
+6. fill tester/device/OS/browser metadata;
+7. attest the run;
+8. export the evidence JSON.
+
+Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v2`.
+
+Validate a completed evidence folder with:
+
+```bash
+python validate_v14_rc_acceptance.py \
+  --rc-status /path/to/v14-rc-status.json \
+  --evidence-dir /path/to/evidence \
+  --write-report v14-rc-physical-report.json \
+  --write-signoff v14-rc-physical-signoff.json
+```
+
+The V14 validator distinguishes `PHYSICAL_READY`, `PRIOR_RELEASE_GATE_READY` and `PROMOTION_READY`. Five genuine V14 passes may complete the physical gate while production promotion remains blocked by V13.3.1 or later cutover gates.
+
+**Current genuine V14 physical evidence: 0/5.** Synthetic CI fixtures test tooling only.
+
+See:
+
+- `v14-rc-required-targets.json`
+- `validate_v14_rc_acceptance.py`
+- `v14-rc-cutover-plan.json`
+- `V14_RC_CERTIFICATION.md`
+
+---
+
+## V13.3 / V13.3.1 — production 13.2.0
+
+V13.3 and V13.3.1 certify the already-deployed Atelier **13.2.0** runtime. The production root remains byte-frozen.
+
+### Runtime lock
 
 - Production: `https://thiepn.github.io/atelier/`
 - Runtime release: `13.2.0`
@@ -11,83 +81,32 @@ V13.3 and V13.3.1 are **certification milestones** for the already-deployed Atel
 - `sw.js` SHA-256: `e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236`
 - PWA cache: `atelier-space-studio-13.2.0`
 
-If either runtime hash changes, previously collected evidence is invalid for the changed runtime until the affected targets are re-tested.
+### Recommended V13 runner
 
-## Required real targets
+Use `DEVICE_ACCEPTANCE_13.3.1.html`. It wraps the original V13.3.0 evidence generator with local per-target draft recovery. Attestation is deliberately never restored and must be checked again after a reload.
 
-1. Firefox Desktop
-2. Safari macOS
-3. Safari iPhone / Home Screen Web App
-4. Safari iPad / Home Screen Web App
-5. Chrome Android Installed PWA
+Supported target query values:
 
-Automated browser simulation does **not** satisfy these physical targets.
+- `firefox-desktop`
+- `safari-macos`
+- `safari-ios-iphone`
+- `safari-ipados-ipad`
+- `chrome-android-installed-pwa`
 
-## 1. Collect evidence on each physical target
+### V13 final sign-off
 
-### Recommended runner
-
-Open `DEVICE_ACCEPTANCE_13.3.1.html` on the target device. It wraps the unchanged V13.3.0 evidence generator and adds local per-target draft recovery, so a reload or interrupted test does not erase checklist progress.
-
-The wrapper does **not** persist the attestation checkbox. After a reload or restored draft, the tester must review the restored results and attest again before export.
-
-Direct target links are supported with the `target` query parameter:
-
-- `DEVICE_ACCEPTANCE_13.3.1.html?target=firefox-desktop`
-- `DEVICE_ACCEPTANCE_13.3.1.html?target=safari-macos`
-- `DEVICE_ACCEPTANCE_13.3.1.html?target=safari-ios-iphone`
-- `DEVICE_ACCEPTANCE_13.3.1.html?target=safari-ipados-ipad`
-- `DEVICE_ACCEPTANCE_13.3.1.html?target=chrome-android-installed-pwa`
-
-### Test procedure
-
-1. Open the recommended V13.3.1 runner on the real target device/browser.
-2. Confirm the matching target profile is selected.
-3. Open Atelier using the provided production link.
-4. Execute every required checklist item on the real device/browser.
-5. Mark each item PASS or FAIL and add notes for unexpected behavior.
-6. Enter tester name or initials and the environment details requested by the runner.
-7. Review the restored/current results, enable the attestation checkbox, and export the evidence JSON.
-
-`DEVICE_ACCEPTANCE_13.3.0.html` remains available as the original generator. V13.3.1 deliberately continues to accept genuine V13.3.0 evidence, so previously completed physical tests do not need to be repeated merely because the completion tooling changed.
-
-## 2. Complete final sign-off
-
-Two supported paths use the same validation rules.
-
-### Browser path
-
-Open `SIGNOFF_CENTER_13.3.1.html` and import the five exported evidence JSON files. Final sign-off unlocks only when all five distinct required targets validate.
-
-### Python / CI path
-
-Place the exported JSON files in one folder and run:
+Use `SIGNOFF_CENTER_13.3.1.html` or:
 
 ```bash
 python validate_acceptance.py --evidence-dir ./evidence
 ```
 
-The validator blocks final sign-off when:
-
-- a required target is absent,
-- a required step is not PASS,
-- the production URL or runtime release is wrong,
-- `index.html` or `sw.js` hashes do not match the frozen runtime,
-- the internal evidence fingerprint was modified,
-- tester identity or attestation is missing,
-- two files claim the same required target,
-- or an evidence file is structurally invalid.
-
-## Final sign-off rule
-
-The release is production-certified only when the validator reports:
+V13 production sign-off is complete only when the validator reports:
 
 `SIGNOFF_READY=true`
 
-and the generated final manifest uses schema:
+with five distinct genuine physical targets.
 
-`atelier-final-production-signoff-v1`
+**Current V13.3.1 physical evidence: 0/5.**
 
-Only then may `FINAL_RELEASE_SIGNOFF_13.3.1.md` be changed from BLOCKED to PASS and the V14 feature-development cycle be treated as the certified successor path.
-
-Until all five real-device evidence files exist and validate, the correct state remains **BLOCKED**. Do not infer, simulate, or fabricate a physical-device pass.
+Do not infer, simulate or fabricate a physical-device pass in either certification track.
