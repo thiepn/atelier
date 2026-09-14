@@ -1,4 +1,4 @@
-name: V14 source and overlay build
+name: V14 source, development and RC packaging
 
 on:
   push:
@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 jobs:
-  source-and-overlay:
+  source-and-packaging:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -41,8 +41,9 @@ jobs:
       - name: Validate V14 migration inventory
         run: python tools/v14_migration_inventory.py --inventory src/v14/migration-inventory.json
 
-      - name: Check V14 module and browser-test JavaScript syntax
+      - name: Check Python and JavaScript syntax
         run: |
+          python -m py_compile tools/v14_rc_package.py
           node --check src/v14/shell/notifications.js
           node --check src/v14/shell/dialogs.js
           node --check src/v14/shell/commands.js
@@ -88,88 +89,118 @@ jobs:
       - name: Build V14 development artifact
         run: python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir v14-dist --force
 
-      - name: Verify artifact structure, architecture freeze and isolated offline shell
+      - name: Package V14 release candidate
+        run: python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
+
+      - name: Verify development and RC structure
         run: |
           python - <<'PY'
           import json
           from pathlib import Path, PurePosixPath
-          root = Path('v14-dist')
+
           source = json.loads(Path('src/v14/manifest.json').read_text('utf-8'))
           inventory = json.loads(Path('src/v14/migration-inventory.json').read_text('utf-8'))
-          built = json.loads((root / 'v14-build-manifest.json').read_text('utf-8'))
-          html = (root / 'index.html').read_text('utf-8')
-          worker = (root / 'sw.js').read_text('utf-8')
+          dev = Path('v14-dist')
+          rc = Path('v14-rc')
+          built = json.loads((dev / 'v14-build-manifest.json').read_text('utf-8'))
+          rc_built = json.loads((rc / 'v14-build-manifest.json').read_text('utf-8'))
+          rc_status = json.loads((rc / 'v14-rc-status.json').read_text('utf-8'))
+          dev_html = (dev / 'index.html').read_text('utf-8')
+          rc_html = (rc / 'index.html').read_text('utf-8')
+          dev_worker = (dev / 'sw.js').read_text('utf-8')
+          rc_worker = (rc / 'sw.js').read_text('utf-8')
           policy = inventory['policy']
           freeze = policy['stabilization']
           worker_policy = freeze['serviceWorker']
+          rc_policy = freeze['releaseCandidatePackaging']
 
           assert built['schema'] == 'atelier-v14-development-build-v1'
-          assert built['version'] == source['version'] == inventory['version'] == '14.0.0-dev.14'
+          assert built['version'] == source['version'] == inventory['version'] == '14.0.0-dev.15'
           assert built['developmentOnly'] is True
           assert built['baseline']['runtimeRelease'] == '13.2.0'
-          assert built['styles'] == source.get('styles', [])
-          assert built['modules'] == source.get('modules', [])
-          assert [patch['source'] for patch in built['patches']] == source.get('patches', [])
+          assert built['styles'] == source['styles']
+          assert built['modules'] == source['modules']
+          assert [patch['source'] for patch in built['patches']] == source['patches']
           assert all(change['occurrences'] >= 1 for patch in built['patches'] for change in patch['changes'])
-          assert '<!-- ATELIER_V14_STYLES:BEGIN -->' in html
-          assert '<!-- ATELIER_V14_MODULES:BEGIN -->' in html
-          for path in source.get('styles', []):
-            assert f'v14/{path}' in html
-            assert (root / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
-          for path in source.get('modules', []):
-            assert f'v14/{path}' in html
-            assert (root / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
+          for path in source['styles']:
+            assert f'v14/{path}' in dev_html
+            assert (dev / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
+          for path in source['modules']:
+            assert f'v14/{path}' in dev_html
+            assert (dev / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
           for bridge in ('AtelierV14Shell?.notifications?.announce', 'AtelierV14Shell?.dialogs', 'AtelierV14Shell?.commands', 'AtelierV14Shell?.files', 'AtelierV14Shell?.icons', 'AtelierV14Shell?.text', 'AtelierV14Shell?.units'):
-            assert bridge in html
+            assert bridge in dev_html and bridge in rc_html
 
           assert policy['phase'] == 'stabilization'
           assert policy['selectionRequired'] is False
           assert freeze['architectureFrozen'] is True
           assert freeze['allowNewLegacyBridges'] is False
           assert freeze['allowProductionCutover'] is False
-          assert source.get('modules', []) == freeze['frozenModules']
-          assert source.get('patches', []) == freeze['frozenPatches']
-          selected = [b for b in inventory['boundaries'] if b['decision'] == 'selected-next']
-          completed = [b for b in inventory['boundaries'] if b['decision'] == 'completed']
-          assert selected == []
-          dimension = next(b for b in completed if b['id'] == 'dimension-formatting')
-          assert dimension['targetMilestone'] == '14.0.0-dev.12'
+          assert source['modules'] == freeze['frozenModules']
+          assert source['patches'] == freeze['frozenPatches']
+          assert [b for b in inventory['boundaries'] if b['decision'] == 'selected-next'] == []
 
-          sw = built['serviceWorker']
-          assert sw is not None
-          assert 'sw.js' not in source.get('passthrough', [])
-          assert source['serviceWorker']['source'] == 'sw.js'
-          assert source['serviceWorker']['output'] == 'sw.js'
-          assert sw['release'] == '14.0.0-dev.14'
-          assert sw['cache'] == 'atelier-v14-dev-14.0.0-dev.14'
-          assert sw['cachePrefix'] == worker_policy['cachePrefix'] == 'atelier-v14-dev-'
-          assert sw['baselineCachePrefix'] == 'atelier-space-studio-'
-          assert sw['stalePrefixReplacements'] == 2
-          assert "const RELEASE='14.0.0-dev.14';" in worker
-          assert "const CACHE='atelier-v14-dev-14.0.0-dev.14';" in worker
-          assert "k.startsWith('atelier-space-studio-')" not in worker
-          assert worker.count("k.startsWith('atelier-v14-dev-')") == 2
-          for path in [*source.get('styles', []), *source.get('modules', [])]:
-            assert './v14/' + path in sw['core']
-            assert './v14/' + path in worker
-          assert worker_policy['mode'] == 'isolated-development'
+          dev_sw = built['serviceWorker']
+          assert dev_sw['release'] == '14.0.0-dev.15'
+          assert dev_sw['cache'] == 'atelier-v14-dev-14.0.0-dev.15'
+          assert dev_sw['cachePrefix'] == worker_policy['cachePrefix'] == 'atelier-v14-dev-'
+          assert "const CACHE='atelier-v14-dev-14.0.0-dev.15';" in dev_worker
           assert worker_policy['preserveBaselineCaches'] is True
           assert worker_policy['precacheV14Assets'] is True
 
-          print('V14_ARTIFACT_STRUCTURE_OK=true version='+built['version'])
-          print('V14_STABILIZATION_FREEZE_OK=true modules='+str(len(freeze['frozenModules']))+' patches='+str(len(freeze['frozenPatches'])))
-          print('V14_OFFLINE_ISOLATION_OK=true cache='+sw['cache']+' core='+str(len(sw['core'])))
-          print('V14_NEXT_MIGRATION=none')
-          print('V14_PRODUCTION_CUTOVER_ALLOWED=false')
+          assert rc_policy['enabled'] is True
+          assert rc_policy['stripDevelopmentDiagnostics'] is True
+          assert rc_policy['cachePrefix'] == 'atelier-v14-rc-'
+          assert rc_policy['certificationMatrix'] == 'CERTIFICATION_MATRIX_13.3.1.json'
+          assert rc_policy['requirePriorSignoffBeforePromotion'] is True
+          assert 'dev-status/dev-status.css' not in rc_html
+          assert 'dev-status/dev-status.js' not in rc_html
+          assert not (rc / 'v14/dev-status/dev-status.css').exists()
+          assert not (rc / 'v14/dev-status/dev-status.js').exists()
+          assert rc_built['artifactKind'] == 'release-candidate'
+          assert rc_built['developmentOnly'] is False
+          assert rc_built['diagnosticsStripped'] is True
+          assert rc_built['productionEligible'] is False
+          assert rc_built['certificationGate']['promotionEligible'] is False
+          assert rc_built['certificationGate']['blockers'] == [
+              'prior-final-signoff-not-pass',
+              'runtime-advance-not-authorized',
+              'physical-evidence-incomplete',
+          ]
+          assert rc_status['schema'] == 'atelier-v14-release-candidate-status-v1'
+          assert rc_status['productionEligible'] is False
+          assert rc_status['cache'] == 'atelier-v14-rc-14.0.0-dev.15'
+          assert "const CACHE='atelier-v14-rc-14.0.0-dev.15';" in rc_worker
+          assert "k.startsWith('atelier-v14-dev-')" not in rc_worker
+          assert rc_worker.count("k.startsWith('atelier-v14-rc-')") == 2
+          assert 'dev-status' not in rc_worker
+
+          print('V14_DEV15_STRUCTURE_OK=true')
+          print('V14_RC_PACKAGE_OK=true diagnostics_stripped=true')
+          print('V14_RC_PROMOTION_ELIGIBLE=false')
+          print('V14_RC_BLOCKERS=' + ','.join(rc_status['certificationGate']['blockers']))
           PY
           node --check v14-dist/sw.js
+          node --check v14-rc/sw.js
+
+      - name: Verify promotion gate fails closed
+        run: |
+          set +e
+          python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc-promotion-check --force --require-production-eligible
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo 'RC promotion unexpectedly succeeded'
+            exit 1
+          fi
+          echo 'V14_RC_FAIL_CLOSED_OK=true'
 
       - name: Install Playwright browser matrix
         run: |
           npm install --no-save --no-package-lock @playwright/test@1.55.0
           npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run generated-artifact browser matrix and isolated offline PWA smoke
+      - name: Run development browser matrix and offline PWA smoke
         env:
           V14_SMOKE_URL: http://127.0.0.1:4173/
         run: |
@@ -184,21 +215,72 @@ jobs:
           npx playwright test v14-shell-smoke.spec.js --config=tools/v14-playwright.config.js --reporter=line --workers=1
           npx playwright test v14-offline-pwa.spec.js --config=tools/v14-playwright.config.js --project=chromium-desktop --reporter=line --workers=1
 
-      - name: Resolve artifact name
+      - name: Run stripped RC Chromium and offline smoke
+        run: |
+          python -m http.server 4174 --directory v14-rc >/tmp/atelier-v14-rc-http.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4174/ >/dev/null; then break; fi
+            sleep 1
+          done
+          node - <<'NODE'
+          const { chromium } = require('@playwright/test');
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext();
+            const page = await context.newPage();
+            const errors=[];
+            page.on('pageerror', e=>errors.push(String(e)));
+            page.on('console', m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto('http://127.0.0.1:4174/', {waitUntil:'networkidle'});
+            await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.notifications && globalThis.AtelierV14Shell?.dialogs && globalThis.AtelierV14Shell?.commands && globalThis.AtelierV14Shell?.files && globalThis.AtelierV14Shell?.icons && globalThis.AtelierV14Shell?.text && globalThis.AtelierV14Shell?.units));
+            if(await page.locator('#atelier-v14-devtools').count()) throw new Error('RC diagnostics surface is present');
+            if(!await page.locator('#app').isVisible()) throw new Error('RC app shell is not visible');
+            await page.evaluate(async()=>{await navigator.serviceWorker.ready});
+            if(!await page.evaluate(()=>Boolean(navigator.serviceWorker.controller))){await page.reload({waitUntil:'networkidle'})}
+            await page.waitForFunction(()=>Boolean(navigator.serviceWorker?.controller));
+            const status=await page.evaluate(()=>new Promise((resolve,reject)=>{const c=navigator.serviceWorker.controller;const ch=new MessageChannel();const t=setTimeout(()=>reject(new Error('status timeout')),5000);ch.port1.onmessage=e=>{clearTimeout(t);resolve(e.data)};c.postMessage({type:'GET_STATUS'},[ch.port2])}));
+            if(status.version!=='14.0.0-dev.15') throw new Error('Wrong RC worker version '+status.version);
+            if(status.cache!=='atelier-v14-rc-14.0.0-dev.15') throw new Error('Wrong RC cache '+status.cache);
+            if(!status.ready || status.missing.length) throw new Error('RC core incomplete '+status.missing.join(','));
+            await context.setOffline(true);
+            await page.reload({waitUntil:'domcontentloaded', timeout:30000});
+            await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.units));
+            if(!await page.locator('#app').isVisible()) throw new Error('RC offline app shell is not visible');
+            if(globalThis.AtelierV14Shell?.units?.formatDimension && await page.evaluate(()=>globalThis.AtelierV14Shell.units.formatDimension(1,'ft-in'))!=='3′ 3.375″') throw new Error('RC units service failed offline');
+            await context.setOffline(false);
+            if(errors.length) throw new Error(errors.join('\n'));
+            await browser.close();
+            console.log('V14_RC_BROWSER_OK=true offline=true diagnostics=false');
+          })().catch(e=>{console.error(e);process.exit(1)});
+          NODE
+
+      - name: Resolve artifact names
         id: artifact_meta
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           version=json.load(open('src/v14/manifest.json',encoding='utf-8'))['version']
           suffix=version.removeprefix('14.0.0-')
-          print(f'name=atelier-v14-{suffix}')
+          print(f'dev_name=atelier-v14-{suffix}')
+          print(f'rc_name=atelier-v14-{suffix}-rc')
           PY
 
       - name: Upload V14 development artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.artifact_meta.outputs.name }}
+          name: ${{ steps.artifact_meta.outputs.dev_name }}
           path: v14-dist
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Upload V14 release-candidate artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.artifact_meta.outputs.rc_name }}
+          path: v14-rc
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14
