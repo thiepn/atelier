@@ -1,7 +1,8 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.12",
+  "version": "14.0.0-dev.13",
   "policy": {
+    "phase": "stabilization",
     "excludedByDefault": [
       "project-persistence",
       "project-schema",
@@ -14,6 +15,30 @@
       "requiredTestability": "high",
       "maxBrowserCoupling": "low",
       "requiresLegacyFallback": true
+    },
+    "stabilization": {
+      "architectureFrozen": true,
+      "allowNewLegacyBridges": false,
+      "allowProductionCutover": false,
+      "frozenModules": [
+        "shell/notifications.js",
+        "shell/dialogs.js",
+        "shell/commands.js",
+        "shell/files.js",
+        "shell/icons.js",
+        "shell/text.js",
+        "shell/units.js",
+        "dev-status/dev-status.js"
+      ],
+      "frozenPatches": [
+        "patches/notifications-bridge.json",
+        "patches/dialogs-bridge.json",
+        "patches/commands-bridge.json",
+        "patches/files-bridge.json",
+        "patches/icons-bridge.json",
+        "patches/text-bridge.json",
+        "patches/units-bridge.json"
+      ]
     }
   },
   "boundaries": [
@@ -30,7 +55,7 @@
       "userPayoff": "medium",
       "decision": "completed",
       "targetMilestone": "14.0.0-dev.12",
-      "rationale": "Pure deterministic unit formatting has been migrated behind an exact fallback bridge in dev.12. The legacy helper body remains available if the V14 units service is unavailable."
+      "rationale": "Pure deterministic unit formatting was migrated behind an exact fallback bridge in dev.12. The legacy helper body remains available if the V14 units service is unavailable."
     },
     {
       "id": "icon-registry-data",
