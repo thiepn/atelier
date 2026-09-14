@@ -1,10 +1,43 @@
 # Atelier Space Studio
 
-**Production runtime: 13.2.0 — V13.3.1 physical evidence completion/sign-off milestone active**
+> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.3** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
 
-Atelier is a local-first browser space-planning studio with a static PWA deployment. The application runtime remains byte-frozen at 13.2.0 while V13.3/V13.3.1 collect and validate real-device production evidence.
+Atelier is a local-first browser space-planning studio with a static PWA deployment.
+
+## V14 development status
+
+V14 is being developed as an isolated successor line rather than by mutating the frozen production file.
+
+Completed development milestones:
+
+1. **14.0.0-dev.1 — Reproducible source boundary**
+   - lossless `index.html` source segmentation;
+   - byte-for-byte rebuild verification;
+   - frozen 13.2.0 source lock;
+   - CI source round-trip.
+2. **14.0.0-dev.2 — Deterministic module overlay**
+   - separate V14 build artifact;
+   - ordered module manifest;
+   - hashed build manifest;
+   - path/traversal guards;
+   - isolated development diagnostics module.
+3. **14.0.0-dev.3 — Shell notifications migration**
+   - audited exact-patch bridge support;
+   - modular announcement/toast/save-status service;
+   - legacy boot-time fallback retained;
+   - behavior tests and real-artifact CI verification.
+
+Build the current development artifact with:
+
+```bash
+python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir dist --force
+```
+
+Architecture: `ARCHITECTURE_V14.md`
 
 ## Production status
+
+**Production runtime: 13.2.0 — V13.3.1 physical evidence completion/sign-off milestone active**
 
 V13.2 is deployed from `main` on GitHub Pages.
 
@@ -17,7 +50,7 @@ V13.2 is deployed from `main` on GitHub Pages.
 - `index.html` SHA-256: `561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46`
 - `sw.js` SHA-256: `e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236`
 
-The runtime has not changed during V13.3 or V13.3.1.
+The production runtime has not changed during V13.3, V13.3.1, or V14 branch development.
 
 ## V13.3 / V13.3.1 physical acceptance
 
@@ -38,8 +71,6 @@ The V13.3.1 runner keeps per-target checklist drafts locally on the test device 
 - V13.3.1 matrix: `CERTIFICATION_MATRIX_13.3.1.json`
 - Final sign-off state: `FINAL_RELEASE_SIGNOFF_13.3.1.md`
 
-V13.3.1 deliberately continues to accept V13.3.0 evidence. A tester does not need to repeat a genuine physical test because the aggregation or resume tooling changed.
-
 The five mandatory physical targets are:
 
 1. Firefox Desktop
@@ -48,24 +79,24 @@ The five mandatory physical targets are:
 4. Safari iPad / Home Screen Web App
 5. Chrome Android Installed PWA
 
-Final sign-off is mechanically blocked until all five distinct evidence files validate against the frozen production hashes and every required step is PASS.
+Final production sign-off is mechanically blocked until all five distinct evidence files validate against the frozen production hashes and every required step is PASS.
 
 ## Sign-off integrity
 
 The final sign-off layer verifies:
 
-- evidence schema and acceptance milestone
-- production URL
-- runtime release
-- exact `index.html` and `sw.js` SHA-256
-- internal evidence fingerprint
-- tester identity and attestation
-- every target-specific required PASS result
-- unique target identity
+- evidence schema and acceptance milestone;
+- production URL;
+- runtime release;
+- exact `index.html` and `sw.js` SHA-256;
+- internal evidence fingerprint;
+- tester identity and attestation;
+- every target-specific required PASS result;
+- unique target identity.
 
-The final sign-off manifest additionally binds each source evidence file by its raw SHA-256. Editing an evidence file after sign-off therefore breaks the manifest relationship.
+The final sign-off manifest additionally binds each source evidence file by its raw SHA-256.
 
-## Automated baseline
+## Automated production baseline
 
 Before physical acceptance, the frozen runtime already has:
 
@@ -78,7 +109,7 @@ Before physical acceptance, the frozen runtime already has:
 
 These automated/simulated results do not substitute for the five physical targets.
 
-## Current final sign-off state
+## Current production sign-off state
 
 **BLOCKED — 0/5 physical evidence files are available in the current implementation conversation.**
 
@@ -86,16 +117,17 @@ Required final validator result:
 
 `SIGNOFF_READY=true`
 
-Only then should `FINAL PRODUCTION SIGN-OFF` be changed to PASS and a V14 feature cycle begin.
+V14 development may continue on its isolated branch, but **V14 must not be promoted, merged as the production successor, or described as production-certified until the relevant release gates are satisfied.**
 
-## Architecture and production files
+## Architecture and release files
 
 - `ARCHITECTURE_V13.md`
+- `ARCHITECTURE_V14.md`
 - `production.config.json`
 - `RELEASE_NOTES_13.2.0.md`
-- `TEST_REPORT_13.2.0.md`
-- `CERTIFICATION_MATRIX_13.2.0.json`
-- `CERTIFICATION_MATRIX_13.3.0.json`
-- `CERTIFICATION_MATRIX_13.3.1.json`
 - `RELEASE_NOTES_13.3.1.md`
+- `RELEASE_NOTES_14.0.0-dev.1.md`
+- `RELEASE_NOTES_14.0.0-dev.2.md`
+- `TEST_REPORT_13.2.0.md`
 - `TEST_REPORT_13.3.1.md`
+- `CERTIFICATION_MATRIX_13.3.1.json`
