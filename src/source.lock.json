@@ -1,0 +1,9 @@
+{
+  "schema": "atelier-v14-source-lock-v1",
+  "runtimeRelease": "13.2.0",
+  "productionCommit": "1151f66e58ff4950d7c8ba265834c59d1a46bf5e",
+  "input": "index.html",
+  "expectedIndexSha256": "561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46",
+  "generator": "python tools/v14_source.py extract --input index.html --out src/generated --force",
+  "policy": "This lock identifies the V13.2.0 runtime used as the V14 development baseline. Change it only with an intentional runtime revision."
+}
