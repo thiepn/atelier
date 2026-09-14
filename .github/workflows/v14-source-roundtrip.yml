@@ -1,4 +1,4 @@
-name: V14 source, development and RC packaging
+name: V14 source, RC packaging and certification infrastructure
 
 on:
   push:
@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 jobs:
-  source-and-packaging:
+  source-packaging-certification:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -44,6 +44,7 @@ jobs:
       - name: Check Python and JavaScript syntax
         run: |
           python -m py_compile tools/v14_rc_package.py
+          python -m py_compile acceptance/validate_v14_rc_acceptance.py
           node --check src/v14/shell/notifications.js
           node --check src/v14/shell/dialogs.js
           node --check src/v14/shell/commands.js
@@ -55,6 +56,37 @@ jobs:
           node --check tools/v14-playwright.config.js
           node --check tools/v14-shell-smoke.spec.js
           node --check tools/v14-offline-pwa.spec.js
+
+      - name: Validate RC certification plan structure
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          plan=json.loads(Path('acceptance/v14-rc-required-targets.json').read_text('utf-8'))
+          cutover=json.loads(Path('acceptance/v14-rc-cutover-plan.json').read_text('utf-8'))
+          assert plan['schema']=='atelier-v14-rc-acceptance-plan-v1'
+          assert plan['evidenceSchema']=='atelier-v14-rc-physical-acceptance-evidence-v1'
+          assert plan['physicalSignoffSchema']=='atelier-v14-rc-physical-signoff-v1'
+          assert plan['requiredRcStatusSchema']=='atelier-v14-release-candidate-status-v1'
+          assert plan['requiresPriorCertificationMatrix']=='CERTIFICATION_MATRIX_13.3.1.json'
+          assert plan['candidateOrigin']['httpsRequired'] is True
+          assert plan['candidateOrigin']['productionOriginForbiddenUntilPriorSignoff'] is True
+          targets=plan['targets']
+          assert len(targets)==5
+          assert len({t['id'] for t in targets})==5
+          assert all('rc-identity' in t['requiredTests'] and 'no-dev-diagnostics' in t['requiredTests'] and 'cache-isolation' in t['requiredTests'] for t in targets)
+          assert cutover['schema']=='atelier-v14-rc-cutover-plan-v1'
+          policy=cutover['promotionPolicy']
+          assert policy['priorReleaseSignoffRequired'] is True
+          assert policy['rcPhysicalSignoffRequired'] is True
+          assert policy['rollbackRecoveryRequired'] is True
+          assert policy['projectDataPreservationRequired'] is True
+          assert policy['automaticPromotionAllowed'] is False
+          assert cutover['physicalAcceptance']['requiredTargets']==5
+          assert cutover['physicalAcceptance']['syntheticFixturesMaySatisfyPhysicalGate'] is False
+          assert cutover['currentState']['productionCutover']=='blocked'
+          print('V14_RC_CERTIFICATION_PLAN_OK=true targets=5 cutover=blocked')
+          PY
 
       - name: Run shell notification behavior test
         run: node tools/test_v14_notifications.mjs src/v14/shell/notifications.js
@@ -92,96 +124,86 @@ jobs:
       - name: Package V14 release candidate
         run: python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
 
-      - name: Verify development and RC structure
+      - name: Verify development, RC and certification bindings
         run: |
           python - <<'PY'
           import json
           from pathlib import Path, PurePosixPath
 
-          source = json.loads(Path('src/v14/manifest.json').read_text('utf-8'))
-          inventory = json.loads(Path('src/v14/migration-inventory.json').read_text('utf-8'))
-          dev = Path('v14-dist')
-          rc = Path('v14-rc')
-          built = json.loads((dev / 'v14-build-manifest.json').read_text('utf-8'))
-          rc_built = json.loads((rc / 'v14-build-manifest.json').read_text('utf-8'))
-          rc_status = json.loads((rc / 'v14-rc-status.json').read_text('utf-8'))
-          dev_html = (dev / 'index.html').read_text('utf-8')
-          rc_html = (rc / 'index.html').read_text('utf-8')
-          dev_worker = (dev / 'sw.js').read_text('utf-8')
-          rc_worker = (rc / 'sw.js').read_text('utf-8')
-          policy = inventory['policy']
-          freeze = policy['stabilization']
-          worker_policy = freeze['serviceWorker']
-          rc_policy = freeze['releaseCandidatePackaging']
+          source=json.loads(Path('src/v14/manifest.json').read_text('utf-8'))
+          inventory=json.loads(Path('src/v14/migration-inventory.json').read_text('utf-8'))
+          physical=json.loads(Path('acceptance/v14-rc-required-targets.json').read_text('utf-8'))
+          cutover=json.loads(Path('acceptance/v14-rc-cutover-plan.json').read_text('utf-8'))
+          dev=Path('v14-dist'); rc=Path('v14-rc')
+          built=json.loads((dev/'v14-build-manifest.json').read_text('utf-8'))
+          rc_built=json.loads((rc/'v14-build-manifest.json').read_text('utf-8'))
+          rc_status=json.loads((rc/'v14-rc-status.json').read_text('utf-8'))
+          dev_html=(dev/'index.html').read_text('utf-8')
+          rc_html=(rc/'index.html').read_text('utf-8')
+          dev_worker=(dev/'sw.js').read_text('utf-8')
+          rc_worker=(rc/'sw.js').read_text('utf-8')
+          policy=inventory['policy']; freeze=policy['stabilization']; worker_policy=freeze['serviceWorker']; rc_policy=freeze['releaseCandidatePackaging']
+          version=source['version']
 
-          assert built['schema'] == 'atelier-v14-development-build-v1'
-          assert built['version'] == source['version'] == inventory['version'] == '14.0.0-dev.15'
-          assert built['developmentOnly'] is True
-          assert built['baseline']['runtimeRelease'] == '13.2.0'
-          assert built['styles'] == source['styles']
-          assert built['modules'] == source['modules']
-          assert [patch['source'] for patch in built['patches']] == source['patches']
-          assert all(change['occurrences'] >= 1 for patch in built['patches'] for change in patch['changes'])
+          assert version==inventory['version']=='14.0.0-dev.16'
+          assert built['version']==version and built['developmentOnly'] is True
+          assert built['baseline']['runtimeRelease']=='13.2.0'
+          assert built['styles']==source['styles'] and built['modules']==source['modules']
+          assert [p['source'] for p in built['patches']]==source['patches']
+          assert all(change['occurrences']>=1 for patch in built['patches'] for change in patch['changes'])
           for path in source['styles']:
             assert f'v14/{path}' in dev_html
-            assert (dev / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
+            assert (dev/'v14'/Path(*PurePosixPath(path).parts)).is_file()
           for path in source['modules']:
             assert f'v14/{path}' in dev_html
-            assert (dev / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
-          for bridge in ('AtelierV14Shell?.notifications?.announce', 'AtelierV14Shell?.dialogs', 'AtelierV14Shell?.commands', 'AtelierV14Shell?.files', 'AtelierV14Shell?.icons', 'AtelierV14Shell?.text', 'AtelierV14Shell?.units'):
+            assert (dev/'v14'/Path(*PurePosixPath(path).parts)).is_file()
+          for bridge in ('AtelierV14Shell?.notifications?.announce','AtelierV14Shell?.dialogs','AtelierV14Shell?.commands','AtelierV14Shell?.files','AtelierV14Shell?.icons','AtelierV14Shell?.text','AtelierV14Shell?.units'):
             assert bridge in dev_html and bridge in rc_html
 
-          assert policy['phase'] == 'stabilization'
-          assert policy['selectionRequired'] is False
-          assert freeze['architectureFrozen'] is True
-          assert freeze['allowNewLegacyBridges'] is False
-          assert freeze['allowProductionCutover'] is False
-          assert source['modules'] == freeze['frozenModules']
-          assert source['patches'] == freeze['frozenPatches']
-          assert [b for b in inventory['boundaries'] if b['decision'] == 'selected-next'] == []
+          assert policy['phase']=='stabilization' and policy['selectionRequired'] is False
+          assert freeze['architectureFrozen'] is True and freeze['allowNewLegacyBridges'] is False and freeze['allowProductionCutover'] is False
+          assert source['modules']==freeze['frozenModules'] and source['patches']==freeze['frozenPatches']
+          assert [b for b in inventory['boundaries'] if b['decision']=='selected-next']==[]
 
-          dev_sw = built['serviceWorker']
-          assert dev_sw['release'] == '14.0.0-dev.15'
-          assert dev_sw['cache'] == 'atelier-v14-dev-14.0.0-dev.15'
-          assert dev_sw['cachePrefix'] == worker_policy['cachePrefix'] == 'atelier-v14-dev-'
-          assert "const CACHE='atelier-v14-dev-14.0.0-dev.15';" in dev_worker
-          assert worker_policy['preserveBaselineCaches'] is True
-          assert worker_policy['precacheV14Assets'] is True
+          dev_sw=built['serviceWorker']
+          assert dev_sw['release']==version
+          assert dev_sw['cache']==f'atelier-v14-dev-{version}'
+          assert dev_sw['cachePrefix']==worker_policy['cachePrefix']=='atelier-v14-dev-'
+          assert f"const CACHE='atelier-v14-dev-{version}';" in dev_worker
 
-          assert rc_policy['enabled'] is True
-          assert rc_policy['stripDevelopmentDiagnostics'] is True
-          assert rc_policy['cachePrefix'] == 'atelier-v14-rc-'
-          assert rc_policy['certificationMatrix'] == 'CERTIFICATION_MATRIX_13.3.1.json'
-          assert rc_policy['requirePriorSignoffBeforePromotion'] is True
-          assert 'dev-status/dev-status.css' not in rc_html
-          assert 'dev-status/dev-status.js' not in rc_html
-          assert not (rc / 'v14/dev-status/dev-status.css').exists()
-          assert not (rc / 'v14/dev-status/dev-status.js').exists()
-          assert rc_built['artifactKind'] == 'release-candidate'
-          assert rc_built['developmentOnly'] is False
-          assert rc_built['diagnosticsStripped'] is True
+          assert rc_policy['physicalAcceptancePlan']=='acceptance/v14-rc-required-targets.json'
+          assert rc_policy['physicalAcceptanceValidator']=='acceptance/validate_v14_rc_acceptance.py'
+          assert rc_policy['cutoverPlan']=='acceptance/v14-rc-cutover-plan.json'
+          assert rc_policy['allowPhysicalEvidenceBeforePriorSignoff'] is True
+          assert rc_policy['allowPromotionBeforePriorSignoff'] is False
+          assert physical['requiresPriorCertificationMatrix']==rc_policy['certificationMatrix']
+          assert cutover['physicalAcceptance']['plan']==rc_policy['physicalAcceptancePlan']
+          assert cutover['physicalAcceptance']['validator']==rc_policy['physicalAcceptanceValidator']
+
+          assert 'dev-status/dev-status.css' not in rc_html and 'dev-status/dev-status.js' not in rc_html
+          assert not (rc/'v14/dev-status/dev-status.css').exists() and not (rc/'v14/dev-status/dev-status.js').exists()
+          assert rc_built['artifactKind']=='release-candidate' and rc_built['developmentOnly'] is False and rc_built['diagnosticsStripped'] is True
           assert rc_built['productionEligible'] is False
-          assert rc_built['certificationGate']['promotionEligible'] is False
-          assert rc_built['certificationGate']['blockers'] == [
-              'prior-final-signoff-not-pass',
-              'runtime-advance-not-authorized',
-              'physical-evidence-incomplete',
-          ]
-          assert rc_status['schema'] == 'atelier-v14-release-candidate-status-v1'
+          assert rc_status['schema']==physical['requiredRcStatusSchema']
+          assert rc_status['version']==version
           assert rc_status['productionEligible'] is False
-          assert rc_status['cache'] == 'atelier-v14-rc-14.0.0-dev.15'
-          assert "const CACHE='atelier-v14-rc-14.0.0-dev.15';" in rc_worker
+          assert rc_status['cache']==f'atelier-v14-rc-{version}'
+          assert rc_status['certificationGate']['blockers']==['prior-final-signoff-not-pass','runtime-advance-not-authorized','physical-evidence-incomplete']
+          assert f"const CACHE='atelier-v14-rc-{version}';" in rc_worker
           assert "k.startsWith('atelier-v14-dev-')" not in rc_worker
-          assert rc_worker.count("k.startsWith('atelier-v14-rc-')") == 2
+          assert rc_worker.count("k.startsWith('atelier-v14-rc-')")==2
           assert 'dev-status' not in rc_worker
 
-          print('V14_DEV15_STRUCTURE_OK=true')
-          print('V14_RC_PACKAGE_OK=true diagnostics_stripped=true')
+          print('V14_DEV16_STRUCTURE_OK=true')
+          print('V14_RC_CERTIFICATION_BOUNDARY_OK=true')
+          print('V14_RC_REAL_EVIDENCE=0/5')
           print('V14_RC_PROMOTION_ELIGIBLE=false')
-          print('V14_RC_BLOCKERS=' + ','.join(rc_status['certificationGate']['blockers']))
           PY
           node --check v14-dist/sw.js
           node --check v14-rc/sw.js
+
+      - name: Self-test V14 RC physical evidence validator
+        run: python acceptance/validate_v14_rc_acceptance.py --rc-status v14-rc/v14-rc-status.json --self-test
 
       - name: Verify promotion gate fails closed
         run: |
@@ -227,30 +249,34 @@ jobs:
           node - <<'NODE'
           const { chromium } = require('@playwright/test');
           (async()=>{
-            const browser = await chromium.launch({headless:true});
-            const context = await browser.newContext();
-            const page = await context.newPage();
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext();
+            const page=await context.newPage();
             const errors=[];
-            page.on('pageerror', e=>errors.push(String(e)));
-            page.on('console', m=>{if(m.type()==='error')errors.push(m.text())});
-            await page.goto('http://127.0.0.1:4174/', {waitUntil:'networkidle'});
-            await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.notifications && globalThis.AtelierV14Shell?.dialogs && globalThis.AtelierV14Shell?.commands && globalThis.AtelierV14Shell?.files && globalThis.AtelierV14Shell?.icons && globalThis.AtelierV14Shell?.text && globalThis.AtelierV14Shell?.units));
-            if(await page.locator('#atelier-v14-devtools').count()) throw new Error('RC diagnostics surface is present');
-            if(!await page.locator('#app').isVisible()) throw new Error('RC app shell is not visible');
+            page.on('pageerror',e=>errors.push(String(e)));
+            page.on('console',m=>{if(m.type()==='error')errors.push(m.text())});
+            await page.goto('http://127.0.0.1:4174/',{waitUntil:'networkidle'});
+            const rcStatus=await page.evaluate(async()=>{const r=await fetch('./v14-rc-status.json',{cache:'no-store'});if(!r.ok)throw new Error('RC status '+r.status);return r.json()});
+            await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.notifications&&globalThis.AtelierV14Shell?.dialogs&&globalThis.AtelierV14Shell?.commands&&globalThis.AtelierV14Shell?.files&&globalThis.AtelierV14Shell?.icons&&globalThis.AtelierV14Shell?.text&&globalThis.AtelierV14Shell?.units));
+            if(await page.locator('#atelier-v14-devtools').count())throw new Error('RC diagnostics surface is present');
+            if(!await page.locator('#app').isVisible())throw new Error('RC app shell is not visible');
             await page.evaluate(async()=>{await navigator.serviceWorker.ready});
-            if(!await page.evaluate(()=>Boolean(navigator.serviceWorker.controller))){await page.reload({waitUntil:'networkidle'})}
+            if(!await page.evaluate(()=>Boolean(navigator.serviceWorker.controller)))await page.reload({waitUntil:'networkidle'});
             await page.waitForFunction(()=>Boolean(navigator.serviceWorker?.controller));
             const status=await page.evaluate(()=>new Promise((resolve,reject)=>{const c=navigator.serviceWorker.controller;const ch=new MessageChannel();const t=setTimeout(()=>reject(new Error('status timeout')),5000);ch.port1.onmessage=e=>{clearTimeout(t);resolve(e.data)};c.postMessage({type:'GET_STATUS'},[ch.port2])}));
-            if(status.version!=='14.0.0-dev.15') throw new Error('Wrong RC worker version '+status.version);
-            if(status.cache!=='atelier-v14-rc-14.0.0-dev.15') throw new Error('Wrong RC cache '+status.cache);
-            if(!status.ready || status.missing.length) throw new Error('RC core incomplete '+status.missing.join(','));
+            if(status.version!==rcStatus.version)throw new Error('Wrong RC worker version '+status.version);
+            if(status.cache!==rcStatus.cache)throw new Error('Wrong RC cache '+status.cache);
+            if(!status.ready||status.missing.length)throw new Error('RC core incomplete '+status.missing.join(','));
+            const dimension=await page.evaluate(()=>globalThis.AtelierV14Shell.units.formatDimension(1,'ft-in'));
+            if(dimension!=='3′ 3.375″')throw new Error('RC units service failed online');
             await context.setOffline(true);
-            await page.reload({waitUntil:'domcontentloaded', timeout:30000});
+            await page.reload({waitUntil:'domcontentloaded',timeout:30000});
             await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.units));
-            if(!await page.locator('#app').isVisible()) throw new Error('RC offline app shell is not visible');
-            if(globalThis.AtelierV14Shell?.units?.formatDimension && await page.evaluate(()=>globalThis.AtelierV14Shell.units.formatDimension(1,'ft-in'))!=='3′ 3.375″') throw new Error('RC units service failed offline');
+            if(!await page.locator('#app').isVisible())throw new Error('RC offline app shell is not visible');
+            const offlineDimension=await page.evaluate(()=>globalThis.AtelierV14Shell.units.formatDimension(1,'ft-in'));
+            if(offlineDimension!=='3′ 3.375″')throw new Error('RC units service failed offline');
             await context.setOffline(false);
-            if(errors.length) throw new Error(errors.join('\n'));
+            if(errors.length)throw new Error(errors.join('\n'));
             await browser.close();
             console.log('V14_RC_BROWSER_OK=true offline=true diagnostics=false');
           })().catch(e=>{console.error(e);process.exit(1)});
