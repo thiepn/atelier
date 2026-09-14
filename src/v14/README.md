@@ -14,15 +14,37 @@ The builder:
 
 - verifies the frozen baseline through `src/source.lock.json`;
 - rejects duplicate V14 injection markers;
-- validates module paths and blocks path traversal;
+- validates module, patch and passthrough paths and blocks path traversal;
+- applies exact legacy bridges with fail-closed occurrence counts;
 - injects V14 styles before `</head>` and modules before `</body>`;
 - copies declared V14 and passthrough assets;
-- writes `v14-build-manifest.json` with baseline, artifact and asset hashes;
+- writes `v14-build-manifest.json` with baseline, patched-baseline, patch, artifact and asset hashes;
 - never modifies the root `index.html`.
 
-## Current first module
+## Layout
 
-`dev-status/` is a deliberately isolated development diagnostics module. It exposes network, display-mode, service-worker, touch and viewport state and clearly labels the artifact as an uncertified V14 development build. It does not mutate projects, persistence, geometry or rendering state.
+- `manifest.json` — ordered development version, styles, modules, bridges and runtime assets.
+- `patches/` — audited exact bridges from the legacy IIFE into V14 modules.
+- `shell/notifications.js` — accessibility announcements, toasts and save/status messaging.
+- `shell/commands.js` — command-palette opening, search and result rendering.
+- `dev-status/` — isolated V14 development diagnostics.
+
+## Bridge rules
+
+A bridge is accepted only when its exact legacy source occurs the declared number of times. If the baseline changes unexpectedly, the build stops rather than applying an approximate patch.
+
+Bridged functions keep their original implementation as fallback. Modules should return `false` when an adapter or required DOM surface is unavailable so the legacy path can still execute.
+
+## Current development artifact
+
+`14.0.0-dev.4` includes:
+
+1. deterministic source/build infrastructure;
+2. development diagnostics;
+3. modular shell notifications;
+4. modular command-palette presentation/search.
+
+Command execution, project persistence, project schema, geometry and renderer behavior remain legacy-owned at this milestone.
 
 ## Rules
 
