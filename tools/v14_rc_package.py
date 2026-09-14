@@ -68,6 +68,11 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
     version = build.get('version')
     if not isinstance(version, str) or not version.startswith('14.0.0-dev.'):
         raise ValueError('RC packaging requires a V14 development build')
+    sw_record = build.get('serviceWorker') or {}
+    if sw_record.get('ownCacheLookupOnly') is not True:
+        raise ValueError('RC packaging requires an own-cache-only development worker')
+    if sw_record.get('cacheLookupIsolationReplacements') != 3:
+        raise ValueError('RC packaging requires all three cache-read isolation replacements')
 
     matrix = load_json(repo_root / 'CERTIFICATION_MATRIX_13.3.1.json')
     gate = certification_gate(matrix)
@@ -92,6 +97,8 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
 
     sw_path = output_dir / 'sw.js'
     worker = sw_path.read_text('utf-8')
+    if 'caches.match(' in worker:
+        raise ValueError('Development worker contains cross-cache reads')
     cache_match = CACHE_RE.search(worker)
     core_match = CORE_RE.search(worker)
     if not cache_match or not core_match:
@@ -109,6 +116,8 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
             raise ValueError(f'Development diagnostics asset missing from service-worker core: {asset}')
         core.remove(asset)
     worker = CORE_RE.sub('const CORE=' + json.dumps(core, separators=(',', ':')) + ';', worker, count=1)
+    if 'caches.match(' in worker:
+        raise ValueError('RC worker contains cross-cache reads after packaging')
     sw_path.write_text(worker, 'utf-8')
 
     build['artifactKind'] = 'release-candidate'
@@ -123,6 +132,7 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
     sw['cache'] = rc_cache
     sw['cachePrefix'] = 'atelier-v14-rc-'
     sw['core'] = core
+    sw['ownCacheLookupOnly'] = True
     build['serviceWorker'] = sw
     build_path.write_text(json.dumps(build, indent=2) + '\n', 'utf-8')
 
@@ -131,6 +141,7 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
         'version': version,
         'artifactKind': 'release-candidate',
         'diagnosticsStripped': True,
+        'ownCacheLookupOnly': True,
         'productionEligible': gate['promotionEligible'],
         'certificationGate': gate,
         'indexSha256': build['artifact']['indexSha256'],
@@ -151,7 +162,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = package(Path(args.repo_root), Path(args.source_dir), Path(args.output_dir), args.force, args.require_production_eligible)
-        print('V14_RC_PACKAGE_OK=true version=' + result['version'] + ' production_eligible=' + str(result['productionEligible']).lower() + ' blockers=' + ','.join(result['certificationGate']['blockers']))
+        print('V14_RC_PACKAGE_OK=true version=' + result['version'] + ' own_cache_only=true production_eligible=' + str(result['productionEligible']).lower() + ' blockers=' + ','.join(result['certificationGate']['blockers']))
         return 0
     except (OSError, ValueError, KeyError, json.JSONDecodeError, SyntaxError) as exc:
         print(f'ERROR: {exc}', file=sys.stderr)
