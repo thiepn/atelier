@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the V14 migration/dependency inventory and selected-next boundary."""
+"""Validate the V14 migration/dependency inventory and migration-selection policy."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ ALLOWED_CALL_SURFACE = {"localized", "broad-readonly", "broad"}
 ALLOWED_BROWSER_COUPLING = {"none", "low", "medium", "high"}
 ALLOWED_TESTABILITY = {"low", "medium", "high"}
 ALLOWED_PAYOFF = {"low", "medium", "high"}
-ALLOWED_DECISION = {"selected-next", "hold", "defer", "blocked"}
+ALLOWED_DECISION = {"selected-next", "completed", "hold", "defer", "blocked"}
 BROWSER_ORDER = {"none": 0, "low": 1, "medium": 2, "high": 3}
 
 
@@ -38,6 +38,8 @@ def validate_inventory(data: dict) -> dict:
     require(isinstance(excluded, list) and excluded, "excludedByDefault must be a non-empty list")
     require(len(excluded) == len(set(excluded)), "excludedByDefault contains duplicates")
     require(all(isinstance(x, str) and x for x in excluded), "excludedByDefault entries must be strings")
+    selection_required = policy.get("selectionRequired", True)
+    require(isinstance(selection_required, bool), "selectionRequired must be boolean")
 
     rules = policy.get("selectionRules")
     require(isinstance(rules, dict), "selectionRules must be an object")
@@ -51,6 +53,7 @@ def validate_inventory(data: dict) -> dict:
 
     ids: set[str] = set()
     selected: list[dict] = []
+    completed: list[dict] = []
     for index, boundary in enumerate(boundaries):
         prefix = f"boundaries[{index}]"
         require(isinstance(boundary, dict), f"{prefix} must be an object")
@@ -81,21 +84,38 @@ def validate_inventory(data: dict) -> dict:
         if decision == "selected-next":
             selected.append(boundary)
             require(isinstance(target, str) and target, f"{boundary_id}: selected boundary requires targetMilestone")
+        elif decision == "completed":
+            completed.append(boundary)
+            require(isinstance(target, str) and target, f"{boundary_id}: completed boundary requires targetMilestone")
+            require(target <= version, f"{boundary_id}: completed targetMilestone cannot be newer than inventory version")
         else:
-            require(target is None, f"{boundary_id}: only selected-next may set targetMilestone")
+            require(target is None, f"{boundary_id}: only selected-next/completed may set targetMilestone")
 
-    require(len(selected) == 1, f"exactly one selected-next boundary required, found {len(selected)}")
-    chosen = selected[0]
-    require(chosen["stateRisk"] == rules["requiredStateRisk"], "selected boundary violates requiredStateRisk")
-    require(chosen["testability"] == rules["requiredTestability"], "selected boundary violates requiredTestability")
-    require(BROWSER_ORDER[chosen["browserCoupling"]] <= BROWSER_ORDER[rules["maxBrowserCoupling"]], "selected boundary exceeds browser coupling limit")
-    require(chosen["mutationRisk"] == "none", "selected boundary must not mutate application state")
-    require(chosen["ownership"] not in excluded, "selected boundary uses excluded ownership")
+    if selection_required:
+        require(len(selected) == 1, f"exactly one selected-next boundary required, found {len(selected)}")
+    else:
+        require(len(selected) == 0, f"selectionRequired=false requires zero selected-next boundaries, found {len(selected)}")
+        require(completed, "selectionRequired=false requires at least one completed migration")
+
+    chosen = selected[0] if selected else None
+    if chosen:
+        require(chosen["stateRisk"] == rules["requiredStateRisk"], "selected boundary violates requiredStateRisk")
+        require(chosen["testability"] == rules["requiredTestability"], "selected boundary violates requiredTestability")
+        require(BROWSER_ORDER[chosen["browserCoupling"]] <= BROWSER_ORDER[rules["maxBrowserCoupling"]], "selected boundary exceeds browser coupling limit")
+        require(chosen["mutationRisk"] == "none", "selected boundary must not mutate application state")
+        require(chosen["ownership"] not in excluded, "selected boundary uses excluded ownership")
+
+    current_completed = [b for b in completed if b["targetMilestone"] == version]
+    if not selection_required:
+        require(current_completed, "selectionRequired=false requires a completed migration at the current inventory version")
 
     return {
         "version": version,
-        "selected": chosen["id"],
-        "targetMilestone": chosen["targetMilestone"],
+        "selectionRequired": selection_required,
+        "selected": chosen["id"] if chosen else None,
+        "targetMilestone": chosen["targetMilestone"] if chosen else None,
+        "completed": [b["id"] for b in completed],
+        "currentCompleted": [b["id"] for b in current_completed],
         "boundaryCount": len(boundaries),
         "blockedCount": sum(1 for b in boundaries if b["decision"] == "blocked"),
         "deferredCount": sum(1 for b in boundaries if b["decision"] in {"defer", "hold"}),
@@ -117,8 +137,9 @@ def main() -> None:
     print(
         "V14_MIGRATION_INVENTORY_OK=true "
         f"version={result['version']} "
-        f"selected={result['selected']} "
-        f"target={result['targetMilestone']} "
+        f"selection_required={str(result['selectionRequired']).lower()} "
+        f"selected={result['selected'] or 'none'} "
+        f"completed={','.join(result['completed']) or 'none'} "
         f"boundaries={result['boundaryCount']} "
         f"blocked={result['blockedCount']} "
         f"deferred={result['deferredCount']}"
