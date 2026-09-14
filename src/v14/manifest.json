@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-module-manifest-v1",
-  "version": "14.0.0-dev.18",
+  "version": "14.0.0-dev.19",
   "styles": [
     "dev-status/dev-status.css"
   ],
