@@ -1,6 +1,6 @@
 # Atelier Space Studio
 
-> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.10** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
+> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.12** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
 
 Atelier is a local-first browser space-planning studio with a static PWA deployment.
 
@@ -20,6 +20,8 @@ Completed development milestones:
 8. **14.0.0-dev.8 — Cross-browser, responsive & offline gate** — Chromium desktop/mobile, Firefox, WebKit, keyboard/focus/accessibility checks and controlled offline reload.
 9. **14.0.0-dev.9 — Modular SVG icon renderer** — pure icon serialization moved behind an exact legacy bridge while the locked icon registry remains legacy-owned.
 10. **14.0.0-dev.10 — Modular text escaping service** — repeated HTML/SVG/XML escaping centralized behind four exact legacy fallbacks.
+11. **14.0.0-dev.11 — Migration & dependency inventory** — machine-validated risk inventory that authorizes only explicit low-state migrations and blocks opportunistic persistence/schema/geometry/rendering extraction.
+12. **14.0.0-dev.12 — Dimension formatting boundary** — pure `fmtDim` behavior moved into a modular units service with exact legacy fallback and cross-browser/offline verification.
 
 Build the current development artifact with:
 
@@ -31,12 +33,13 @@ Architecture: `ARCHITECTURE_V14.md`
 
 ### Current V14 validation
 
-Dev.10 passes:
+Dev.12 passes:
 
 - source and overlay unit tests;
-- independent behavior tests for notifications, dialogs, commands, file utilities, icons and text escaping;
+- migration-inventory policy tests and validator;
+- independent behavior tests for notifications, dialogs, commands, file utilities, icons, text escaping and dimension formatting;
 - exact locked-baseline verification;
-- byte-for-byte source round-trip;
+- byte-for-byte source round trip;
 - all exact bridge occurrence checks;
 - generated artifact structure checks;
 - Chromium desktop integration;
@@ -45,10 +48,13 @@ Dev.10 passes:
 - WebKit desktop integration;
 - responsive overflow, dialog focus/Escape and accessibility assertions;
 - direct HTML/XML escaping probes;
-- controlled Chromium offline/PWA reload with all V14 shell services restored;
+- direct metric/imperial dimension-formatting probes;
+- controlled Chromium offline/PWA reload with all V14 shell/helper services restored;
 - artifact upload.
 
-Latest validated artifact: `atelier-v14-dev.10` from workflow run `34816085941`.
+Latest validated artifact: `atelier-v14-dev.12` from workflow run `34871518856`.
+
+The migration inventory intentionally has no `selected-next` boundary after dev.12. A new architecture decision is required before another legacy extraction begins.
 
 ## Production status
 
@@ -91,8 +97,8 @@ V14 development may continue on its isolated branch, but **V14 must not be promo
 - `production.config.json`
 - `RELEASE_NOTES_13.2.0.md`
 - `RELEASE_NOTES_13.3.1.md`
-- `RELEASE_NOTES_14.0.0-dev.1.md` through `RELEASE_NOTES_14.0.0-dev.10.md`
+- `RELEASE_NOTES_14.0.0-dev.1.md` through `RELEASE_NOTES_14.0.0-dev.11.md`
 - `TEST_REPORT_13.2.0.md`
 - `TEST_REPORT_13.3.1.md`
-- `TEST_REPORT_14.0.0-dev.3.md` through `TEST_REPORT_14.0.0-dev.10.md`
+- `TEST_REPORT_14.0.0-dev.3.md` through `TEST_REPORT_14.0.0-dev.11.md`
 - `CERTIFICATION_MATRIX_13.3.1.json`
