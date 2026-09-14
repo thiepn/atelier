@@ -4,36 +4,23 @@ This directory contains authored V14 development code.
 
 ## Current checkpoint
 
-**14.0.0-dev.15** is the current validated V14 checkpoint. It produces two isolated artifacts:
+**14.0.0-dev.16** is the current validated checkpoint.
 
-- a development artifact with diagnostics;
-- a stripped release-candidate artifact.
-
-Neither artifact is production certification.
+The application architecture remains frozen at eight modules and seven exact bridges. Dev.16 adds certification infrastructure around the already validated RC package; it does not move more legacy state or rendering ownership.
 
 ## Build and package
 
-Build the normal development artifact:
+Development artifact:
 
 ```bash
 python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir v14-dist --force
 ```
 
-Package the RC artifact:
+Release-candidate artifact:
 
 ```bash
 python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
 ```
-
-The development builder verifies the locked 13.2.0 baseline, applies exact bridges, injects the frozen V14 module surface, generates the isolated development worker and emits `v14-build-manifest.json`.
-
-The RC packager then:
-
-- removes `dev-status` CSS/JS and their HTML tags;
-- removes those diagnostic assets from the service-worker core;
-- changes the cache namespace from `atelier-v14-dev-*` to `atelier-v14-rc-*`;
-- evaluates `CERTIFICATION_MATRIX_13.3.1.json`;
-- writes RC promotion state to `v14-build-manifest.json` and `v14-rc-status.json`.
 
 ## Frozen module surface
 
@@ -48,66 +35,80 @@ The RC packager then:
 
 Seven exact legacy bridges remain frozen under `patches/`.
 
-## Stabilization policy
+## Stabilization and RC certification policy
 
-`migration-inventory.json` is validated by `tools/v14_migration_inventory.py`.
-
-Current rules include:
+`migration-inventory.json` is validated by `tools/v14_migration_inventory.py` and currently requires:
 
 - `phase: stabilization`;
-- `architectureFrozen: true`;
-- `allowNewLegacyBridges: false`;
-- `allowProductionCutover: false`;
-- no `selected-next` migration;
-- isolated development cache prefix `atelier-v14-dev-`;
-- isolated RC cache prefix `atelier-v14-rc-`;
-- RC diagnostics must be stripped;
-- RC promotion must require prior production sign-off.
+- frozen module/patch lists;
+- no new legacy bridges;
+- no production cutover;
+- isolated development and RC cache namespaces;
+- diagnostics stripped from RC packaging;
+- prior sign-off required before promotion;
+- V14 RC physical plan `acceptance/v14-rc-required-targets.json`;
+- validator `acceptance/validate_v14_rc_acceptance.py`;
+- cutover plan `acceptance/v14-rc-cutover-plan.json`;
+- physical evidence may be collected before prior sign-off;
+- promotion may not occur before prior sign-off.
 
-Persistence, schema, geometry and rendering remain blocked from opportunistic extraction.
+## RC physical evidence contract
 
-## Validation
+Real evidence is bound to the exact candidate through:
 
-Latest successful workflow: **`34882066210`**.
+- RC version;
+- RC `index.html` SHA-256;
+- RC `sw.js` SHA-256;
+- RC cache identity;
+- one normalized HTTPS candidate origin.
 
-The workflow validates:
+Five targets are required:
 
-1. source/build and migration-policy tests;
-2. shell/helper behavior tests;
-3. exact baseline and source round trip;
-4. development artifact structure and cache isolation;
-5. RC packaging and diagnostic stripping;
-6. RC certification metadata;
-7. fail-closed promotion behavior;
-8. Chromium desktop/mobile, Firefox and WebKit development integration;
-9. development offline reload;
-10. stripped RC Chromium startup and offline reload;
-11. upload of both development and RC artifacts.
+1. Firefox Desktop
+2. Safari macOS
+3. Safari iPhone / Home Screen Web App
+4. Safari iPad / Home Screen Web App
+5. Chrome Android Installed PWA
 
-## RC promotion state
+The validator reports `PHYSICAL_READY`, `PRIOR_RELEASE_GATE_READY` and `PROMOTION_READY` separately.
 
-Current RC promotion eligibility is **false**.
+Synthetic CI evidence is permitted only to test validator behavior and never counts as physical evidence.
 
-Current blockers:
+## Current validation
 
-- `prior-final-signoff-not-pass`
-- `runtime-advance-not-authorized`
-- `physical-evidence-incomplete`
+Latest successful workflow: **`34883134671`**.
 
-`--require-production-eligible` must continue to fail until those conditions are genuinely resolved.
+Passed:
+
+- source/build tests;
+- migration/stabilization policy tests;
+- certification-plan structure validation;
+- RC evidence-validator synthetic positive/tamper/duplicate self-tests;
+- fail-closed promotion gate;
+- Chromium desktop/mobile, Firefox and WebKit development integration;
+- development offline reload;
+- stripped RC Chromium startup/offline reload;
+- development and RC artifact upload.
+
+## Current real-world state
+
+- V14 RC physical evidence: **0/5**
+- HTTPS staging origin: **not provisioned**
+- prior V13.3.1 release gate: **blocked**
+- production cutover: **blocked**
+- rollback certification: **not run**
+
+See `CERTIFICATION_MATRIX_14.0.0-rc.json` and `acceptance/V14_RC_CERTIFICATION.md`.
 
 ## Ownership boundary
 
-V14 owns only the generic shell/helper and packaging surfaces listed above.
-
-Legacy runtime ownership remains for:
+Legacy runtime ownership still includes:
 
 - command execution;
-- icon registry data;
 - project persistence/backups;
 - schema/validation;
 - geometry/project math;
-- identity generation;
+- project identity;
 - catalog/application state;
 - numeric editing/project unit state;
 - domain export semantics;
