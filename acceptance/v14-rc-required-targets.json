@@ -1,19 +1,23 @@
 {
-  "schema": "atelier-v14-rc-acceptance-plan-v2",
+  "schema": "atelier-v14-rc-acceptance-plan-v3",
   "acceptanceMilestone": "14.0.0-rc-physical",
-  "evidenceSchema": "atelier-v14-rc-physical-acceptance-evidence-v2",
-  "physicalSignoffSchema": "atelier-v14-rc-physical-signoff-v2",
+  "evidenceSchema": "atelier-v14-rc-physical-acceptance-evidence-v3",
+  "physicalSignoffSchema": "atelier-v14-rc-physical-signoff-v3",
   "requiredRcStatusSchema": "atelier-v14-release-candidate-status-v1",
   "requiresPriorCertificationMatrix": "CERTIFICATION_MATRIX_13.3.1.json",
   "candidateDeployment": {
-    "url": "https://thiepn.github.io/atelier/v14-rc-staging/app/",
-    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html",
+    "url": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/app/",
+    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.18",
+    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/staging-status.json",
     "productionUrl": "https://thiepn.github.io/atelier/",
     "httpsRequired": true,
     "exactUrlEvidenceRequired": true,
     "sameOriginRuntimeRequired": true,
     "productionRootRuntimeMustRemainImmutable": true,
-    "serviceWorkerScopeMustBeCandidatePath": true
+    "serviceWorkerScopeMustBeCandidatePath": true,
+    "versionedPathRequired": true,
+    "preservePriorCandidates": true,
+    "runnerCacheBustRequired": true
   },
   "targets": [
     {
