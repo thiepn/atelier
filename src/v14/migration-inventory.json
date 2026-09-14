@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.18",
+  "version": "14.0.0-dev.19",
   "policy": {
     "phase": "stabilization",
     "excludedByDefault": [
@@ -65,10 +65,10 @@
         "publishBasePath": "v14-rc-staging/",
         "versionedCandidatePath": true,
         "preservePriorCandidates": true,
-        "candidatePath": "v14-rc-staging/14.0.0-dev.18/",
-        "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/app/",
-        "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.18",
-        "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/staging-status.json",
+        "candidatePath": "v14-rc-staging/14.0.0-dev.19/",
+        "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/app/",
+        "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/acceptance.html?v=14.0.0-dev.19",
+        "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/staging-status.json",
         "productionUrl": "https://thiepn.github.io/atelier/",
         "productionRootRuntimeImmutable": true,
         "serviceWorkerScopeIsolatedByPath": true,
