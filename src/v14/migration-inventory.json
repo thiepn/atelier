@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.15",
+  "version": "14.0.0-dev.16",
   "policy": {
     "phase": "stabilization",
     "excludedByDefault": [
@@ -50,7 +50,12 @@
         "stripDevelopmentDiagnostics": true,
         "cachePrefix": "atelier-v14-rc-",
         "certificationMatrix": "CERTIFICATION_MATRIX_13.3.1.json",
-        "requirePriorSignoffBeforePromotion": true
+        "requirePriorSignoffBeforePromotion": true,
+        "physicalAcceptancePlan": "acceptance/v14-rc-required-targets.json",
+        "physicalAcceptanceValidator": "acceptance/validate_v14_rc_acceptance.py",
+        "cutoverPlan": "acceptance/v14-rc-cutover-plan.json",
+        "allowPhysicalEvidenceBeforePriorSignoff": true,
+        "allowPromotionBeforePriorSignoff": false
       }
     }
   },
