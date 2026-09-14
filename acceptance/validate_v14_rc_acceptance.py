@@ -276,8 +276,12 @@ def validate_file(path, rc_status):
     return target_id, original, errors
 
 
-def collect(evidence_dir, rc_status):
-    files = sorted(pathlib.Path(evidence_dir).glob('*.json'))
+def collect(evidence_dir, rc_status, exclude_paths=()):
+    excluded = {pathlib.Path(path).resolve() for path in exclude_paths if path}
+    files = [
+        path for path in sorted(pathlib.Path(evidence_dir).glob('*.json'))
+        if path.resolve() not in excluded
+    ]
     by_target = {}
     failures = []
     for path in files:
@@ -348,7 +352,8 @@ def build_report(by_target, failures, missing, physical_ready, rc_status):
 
 def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
     rc_status = load_rc_status(rc_status_path)
-    by_target, failures, missing, physical_ready = collect(evidence_dir, rc_status)
+    excluded_outputs = [rc_status_path, write_signoff, write_report]
+    by_target, failures, missing, physical_ready = collect(evidence_dir, rc_status, excluded_outputs)
     prior_ready = prior_release_gate_ready(rc_status)
     cutover_eligible = physical_ready and prior_ready
     print(f'VALID_RC_EVIDENCE={len(by_target)}/{len(PLAN["targets"])}')
@@ -428,6 +433,12 @@ def self_test(rc_status_path):
         assert signed['productionPromotionReady'] is False
         assert len(signed['evidence']) == len(targets)
 
+        # Idempotence: generated outputs may live alongside evidence without being re-ingested.
+        assert run(root, rc_status_path, signoff, report) == 0
+        rerun_report = json.loads(report.read_text(encoding='utf-8'))
+        assert rerun_report['validEvidence'] == len(targets)
+        assert rerun_report['failures'] == []
+
         firefox_path = root / 'firefox-desktop.json'
         good = fixture_payload(targets[0], rc_status)
         cases = []
@@ -443,7 +454,7 @@ def self_test(rc_status_path):
             assert target_id == 'firefox-desktop' and errors
         write_fixture(firefox_path, good)
         write_fixture(root / 'firefox-copy.json', fixture_payload(targets[0], rc_status))
-        assert run(root, rc_status_path) == 2
+        assert run(root, rc_status_path, signoff, report) == 2
 
         wrong_status = dict(rc_status)
         wrong_status['version'] = '14.0.0-dev.17'
@@ -457,7 +468,7 @@ def self_test(rc_status_path):
         else:
             raise AssertionError('wrong candidate version status was accepted')
 
-    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true own_cache_only=true promotion_fail_closed=true')
+    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true own_cache_only=true output_idempotent=true promotion_fail_closed=true')
     return 0
 
 
