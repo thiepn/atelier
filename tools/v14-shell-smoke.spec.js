@@ -8,7 +8,8 @@ async function waitForV14Shell(page) {
     globalThis.AtelierV14Shell?.dialogs &&
     globalThis.AtelierV14Shell?.commands &&
     globalThis.AtelierV14Shell?.files &&
-    globalThis.AtelierV14Shell?.icons
+    globalThis.AtelierV14Shell?.icons &&
+    globalThis.AtelierV14Shell?.text
   ));
 }
 
@@ -109,12 +110,22 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
   ));
   expect(iconProbe).toBe('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1L2 2"/></svg>');
 
+  const escaped = await page.evaluate(() => ({
+    html: globalThis.AtelierV14Shell.text.escapeHtml(`<script a="1">'&'</script>`),
+    xml: globalThis.AtelierV14Shell.text.escapeXml(`<tag a="1">'&'</tag>`),
+  }));
+  expect(escaped).toEqual({
+    html: '&lt;script a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/script&gt;',
+    xml: '&lt;tag a=&quot;1&quot;&gt;&apos;&amp;&apos;&lt;/tag&gt;',
+  });
+
   const versions = await page.evaluate(() => ({
     notifications: globalThis.AtelierV14Shell.notifications.version,
     dialogs: globalThis.AtelierV14Shell.dialogs.version,
     commands: globalThis.AtelierV14Shell.commands.version,
     files: globalThis.AtelierV14Shell.files.version,
     icons: globalThis.AtelierV14Shell.icons.version,
+    text: globalThis.AtelierV14Shell.text.version,
   }));
   expect(versions).toEqual({
     notifications: '14.0.0-dev.3',
@@ -122,6 +133,7 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
     commands: '14.0.0-dev.4',
     files: '14.0.0-dev.5',
     icons: '14.0.0-dev.9',
+    text: '14.0.0-dev.10',
   });
 
   expect(pageErrors, `page errors: ${pageErrors.join('\n')}`).toEqual([]);
