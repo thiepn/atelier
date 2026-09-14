@@ -1,14 +1,12 @@
 # V14 modules
 
-This directory contains authored V14 development code.
-
 ## Current checkpoint
 
-**14.0.0-dev.16** is the current validated checkpoint.
+**14.0.0-dev.17** is the current validated V14 checkpoint.
 
-The application architecture remains frozen at eight modules and seven exact bridges. Dev.16 adds certification infrastructure around the already validated RC package; it does not move more legacy state or rendering ownership.
+The application architecture remains frozen at eight modules and seven exact legacy bridges. Dev.17 adds HTTPS staging and physical-evidence capture infrastructure only.
 
-## Build and package
+## Build pipeline
 
 Development artifact:
 
@@ -21,6 +19,14 @@ Release-candidate artifact:
 ```bash
 python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
 ```
+
+Staging subtree:
+
+```bash
+python tools/v14_staging_package.py --repo-root . --rc-dir v14-rc --output-dir v14-staging --force
+```
+
+`v14_staging_package.py` copies the exact stripped RC into `v14-rc-staging/app/`, verifies its index/SW hashes, generates the physical acceptance runner, and writes `staging-status.json`.
 
 ## Frozen module surface
 
@@ -35,83 +41,54 @@ python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir 
 
 Seven exact legacy bridges remain frozen under `patches/`.
 
-## Stabilization and RC certification policy
+## Staging policy
 
-`migration-inventory.json` is validated by `tools/v14_migration_inventory.py` and currently requires:
+The stabilization inventory requires:
 
 - `phase: stabilization`;
-- frozen module/patch lists;
 - no new legacy bridges;
 - no production cutover;
-- isolated development and RC cache namespaces;
-- diagnostics stripped from RC packaging;
-- prior sign-off required before promotion;
-- V14 RC physical plan `acceptance/v14-rc-required-targets.json`;
-- validator `acceptance/validate_v14_rc_acceptance.py`;
-- cutover plan `acceptance/v14-rc-cutover-plan.json`;
-- physical evidence may be collected before prior sign-off;
-- promotion may not occur before prior sign-off.
+- isolated development cache `atelier-v14-dev-*`;
+- isolated RC cache `atelier-v14-rc-*`;
+- RC diagnostics stripped;
+- staging path `v14-rc-staging/` only;
+- production root runtime immutable;
+- path-scoped staging service worker;
+- exact HTTPS candidate and runner URLs;
+- five real physical targets before physical readiness.
 
-## RC physical evidence contract
+## Live staging
 
-Real evidence is bound to the exact candidate through:
+- Runner: `https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html`
+- Candidate: `https://thiepn.github.io/atelier/v14-rc-staging/app/`
+- Status: `https://thiepn.github.io/atelier/v14-rc-staging/staging-status.json`
 
-- RC version;
-- RC `index.html` SHA-256;
-- RC `sw.js` SHA-256;
-- RC cache identity;
-- one normalized HTTPS candidate origin.
+Candidate identity:
 
-Five targets are required:
+- version `14.0.0-dev.17`;
+- cache `atelier-v14-rc-14.0.0-dev.17`;
+- index SHA-256 `e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f`;
+- service-worker SHA-256 `bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043`.
 
-1. Firefox Desktop
-2. Safari macOS
-3. Safari iPhone / Home Screen Web App
-4. Safari iPad / Home Screen Web App
-5. Chrome Android Installed PWA
+## Evidence contract
 
-The validator reports `PHYSICAL_READY`, `PRIOR_RELEASE_GATE_READY` and `PROMOTION_READY` separately.
+The runner cannot export evidence until its automatic identity check passes and every target-specific required test is marked PASS with complete tester/device metadata and attestation.
 
-Synthetic CI evidence is permitted only to test validator behavior and never counts as physical evidence.
+Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v2`.
 
-## Current validation
+The five required targets remain Firefox Desktop, Safari macOS, Safari iPhone, Safari iPad and Chrome Android installed PWA.
 
-Latest successful workflow: **`34883134671`**.
+Synthetic CI evidence validates tooling only and never counts as physical evidence.
 
-Passed:
+## Validation
 
-- source/build tests;
-- migration/stabilization policy tests;
-- certification-plan structure validation;
-- RC evidence-validator synthetic positive/tamper/duplicate self-tests;
-- fail-closed promotion gate;
-- Chromium desktop/mobile, Firefox and WebKit development integration;
-- development offline reload;
-- stripped RC Chromium startup/offline reload;
-- development and RC artifact upload.
-
-## Current real-world state
-
-- V14 RC physical evidence: **0/5**
-- HTTPS staging origin: **not provisioned**
-- prior V13.3.1 release gate: **blocked**
-- production cutover: **blocked**
-- rollback certification: **not run**
-
-See `CERTIFICATION_MATRIX_14.0.0-rc.json` and `acceptance/V14_RC_CERTIFICATION.md`.
+- dev.17 workflow `34885183276`: PASS
+- independent public HTTPS verification `34885579138`: PASS
+- genuine physical evidence: **0/5**
+- production promotion: **blocked**
 
 ## Ownership boundary
 
-Legacy runtime ownership still includes:
-
-- command execution;
-- project persistence/backups;
-- schema/validation;
-- geometry/project math;
-- project identity;
-- catalog/application state;
-- numeric editing/project unit state;
-- domain export semantics;
-- 2D/3D rendering.
+Legacy runtime ownership still includes command execution, project persistence/backups, schema/validation, geometry/project math, identity generation, catalog/application state, numeric editing/project unit state, domain export semantics and 2D/3D rendering.
 
 Do not resume stateful extraction during stabilization merely to increase modularization count.
