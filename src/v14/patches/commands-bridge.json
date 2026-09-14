@@ -1,0 +1,19 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-commands-bridge",
+  "description": "Delegate command-palette opening and search rendering to the V14 shell command service after that module becomes available, while retaining the exact legacy implementations as boot-time fallback.",
+  "changes": [
+    {
+      "id": "commands-dialog-bridge",
+      "expectedOccurrences": 1,
+      "find": "function commandsDialog(){openDialog('Find a tool or an object.',`<div class=\"search-field\">${icon('search')}<input id=\"command-search\" type=\"search\" placeholder=\"Try “sofa”, “export”, or “repeat”…\" autocomplete=\"off\" aria-label=\"Search commands and objects\"></div><div class=\"command-results\" id=\"command-results\"></div>`);renderCommands('');setTimeout(()=>$('#command-search').focus(),10);}",
+      "replace": "function commandsDialog(){const service=globalThis.AtelierV14Shell?.commands;if(service?.open&&service.open({openDialog,icon,esc,commands:COMMANDS,catalog:CATALOG})!==false)return;openDialog('Find a tool or an object.',`<div class=\"search-field\">${icon('search')}<input id=\"command-search\" type=\"search\" placeholder=\"Try “sofa”, “export”, or “repeat”…\" autocomplete=\"off\" aria-label=\"Search commands and objects\"></div><div class=\"command-results\" id=\"command-results\"></div>`);renderCommands('');setTimeout(()=>$('#command-search').focus(),10);}"
+    },
+    {
+      "id": "commands-render-bridge",
+      "expectedOccurrences": 1,
+      "find": "function renderCommands(query){const q=query.toLowerCase().trim();$('#command-results').innerHTML=COMMANDS.filter(([,label])=>label.toLowerCase().includes(q)).map(([action,label,ic])=>`<button class=\"command-item\" data-command=\"${action}\">${icon(ic,18)}<span>${esc(label)}</span><small>COMMAND</small></button>`).join('')+Object.values(CATALOG).filter(a=>q&&(`${a.name} ${a.category} ${a.model} ${a.option||''} ${a.tags||''}`).toLowerCase().includes(q)).slice(0,24).map(a=>`<button class=\"command-item\" data-command-place=\"${a.id}\">${icon('plus',18)}<span>${esc(a.name)}</span><small>${esc(a.category)}</small></button>`).join('');if(!$('#command-results').children.length)$('#command-results').innerHTML='<p class=\"empty-state\">No matching commands or objects.</p>';}",
+      "replace": "function renderCommands(query){const service=globalThis.AtelierV14Shell?.commands;if(service?.render&&service.render(query,{icon,esc,commands:COMMANDS,catalog:CATALOG})!==false)return;const q=query.toLowerCase().trim();$('#command-results').innerHTML=COMMANDS.filter(([,label])=>label.toLowerCase().includes(q)).map(([action,label,ic])=>`<button class=\"command-item\" data-command=\"${action}\">${icon(ic,18)}<span>${esc(label)}</span><small>COMMAND</small></button>`).join('')+Object.values(CATALOG).filter(a=>q&&(`${a.name} ${a.category} ${a.model} ${a.option||''} ${a.tags||''}`).toLowerCase().includes(q)).slice(0,24).map(a=>`<button class=\"command-item\" data-command-place=\"${a.id}\">${icon('plus',18)}<span>${esc(a.name)}</span><small>${esc(a.category)}</small></button>`).join('');if(!$('#command-results').children.length)$('#command-results').innerHTML='<p class=\"empty-state\">No matching commands or objects.</p>'; }"
+    }
+  ]
+}
