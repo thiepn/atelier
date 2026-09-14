@@ -182,6 +182,7 @@ def command_build(args: argparse.Namespace) -> None:
     lock = load_lock(Path(args.lock) if args.lock else None)
     if lock:
         verify_lock_bytes(data, lock, output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_bytes(data)
     print(f"BUILD_OK=true bytes={len(data)} sha256={sha256(data)}")
 
