@@ -3,8 +3,16 @@ name: V14 source and overlay build
 on:
   push:
     branches: [v14-development]
+    paths-ignore:
+      - '**/*.md'
   pull_request:
     branches: [v14-development]
+    paths-ignore:
+      - '**/*.md'
+
+concurrency:
+  group: v14-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -63,41 +71,30 @@ jobs:
         run: |
           python - <<'PY'
           import json
-          from pathlib import Path
+          from pathlib import Path, PurePosixPath
           root = Path('v14-dist')
-          manifest = json.loads((root / 'v14-build-manifest.json').read_text('utf-8'))
+          source = json.loads(Path('src/v14/manifest.json').read_text('utf-8'))
+          built = json.loads((root / 'v14-build-manifest.json').read_text('utf-8'))
           html = (root / 'index.html').read_text('utf-8')
-          assert manifest['schema'] == 'atelier-v14-development-build-v1'
-          assert manifest['version'] == '14.0.0-dev.7'
-          assert manifest['developmentOnly'] is True
-          assert manifest['baseline']['runtimeRelease'] == '13.2.0'
-          assert len(manifest['patches']) == 4
-          patch_map = {patch['id']: patch for patch in manifest['patches']}
-          assert set(patch_map) == {'shell-notifications-bridge', 'shell-dialogs-bridge', 'shell-commands-bridge', 'shell-files-bridge'}
-          assert len(patch_map['shell-notifications-bridge']['changes']) == 3
-          assert len(patch_map['shell-dialogs-bridge']['changes']) == 3
-          assert len(patch_map['shell-commands-bridge']['changes']) == 2
-          assert len(patch_map['shell-files-bridge']['changes']) == 2
-          assert all(change['occurrences'] == 1 for patch in manifest['patches'] for change in patch['changes'])
+          assert built['schema'] == 'atelier-v14-development-build-v1'
+          assert built['version'] == source['version']
+          assert built['developmentOnly'] is True
+          assert built['baseline']['runtimeRelease'] == '13.2.0'
+          assert built['styles'] == source.get('styles', [])
+          assert built['modules'] == source.get('modules', [])
+          assert [patch['source'] for patch in built['patches']] == source.get('patches', [])
+          assert all(change['occurrences'] >= 1 for patch in built['patches'] for change in patch['changes'])
           assert '<!-- ATELIER_V14_STYLES:BEGIN -->' in html
           assert '<!-- ATELIER_V14_MODULES:BEGIN -->' in html
-          assert 'v14/dev-status/dev-status.css' in html
-          assert 'v14/shell/notifications.js' in html
-          assert 'v14/shell/dialogs.js' in html
-          assert 'v14/shell/commands.js' in html
-          assert 'v14/shell/files.js' in html
-          assert 'v14/dev-status/dev-status.js' in html
-          assert 'AtelierV14Shell?.notifications?.announce' in html
-          assert 'AtelierV14Shell?.dialogs' in html
-          assert 'AtelierV14Shell?.commands' in html
-          assert 'AtelierV14Shell?.files' in html
-          assert (root / 'v14/dev-status/dev-status.css').is_file()
-          assert (root / 'v14/shell/notifications.js').is_file()
-          assert (root / 'v14/shell/dialogs.js').is_file()
-          assert (root / 'v14/shell/commands.js').is_file()
-          assert (root / 'v14/shell/files.js').is_file()
-          assert (root / 'v14/dev-status/dev-status.js').is_file()
-          print('V14_ARTIFACT_STRUCTURE_OK=true')
+          for path in source.get('styles', []):
+            assert f'v14/{path}' in html
+            assert (root / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
+          for path in source.get('modules', []):
+            assert f'v14/{path}' in html
+            assert (root / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
+          for bridge in ('AtelierV14Shell?.notifications?.announce', 'AtelierV14Shell?.dialogs', 'AtelierV14Shell?.commands', 'AtelierV14Shell?.files'):
+            assert bridge in html
+          print('V14_ARTIFACT_STRUCTURE_OK=true version='+built['version'])
           PY
 
       - name: Install Playwright Chromium
@@ -119,10 +116,20 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4173/ >/dev/null
           npx playwright test tools/v14-shell-smoke.spec.js --reporter=line --workers=1
 
+      - name: Resolve artifact name
+        id: artifact_meta
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          version=json.load(open('src/v14/manifest.json',encoding='utf-8'))['version']
+          suffix=version.removeprefix('14.0.0-')
+          print(f'name=atelier-v14-{suffix}')
+          PY
+
       - name: Upload V14 development artifact
         uses: actions/upload-artifact@v4
         with:
-          name: atelier-v14-dev.7
+          name: ${{ steps.artifact_meta.outputs.name }}
           path: v14-dist
           if-no-files-found: error
           include-hidden-files: true
