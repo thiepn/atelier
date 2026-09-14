@@ -18,7 +18,7 @@ class MigrationInventoryTests(unittest.TestCase):
 
     def test_repository_inventory_is_valid_stabilization(self):
         result = validate_inventory(copy.deepcopy(self.base))
-        self.assertEqual(result["version"], "14.0.0-dev.17")
+        self.assertEqual(result["version"], "14.0.0-dev.18")
         self.assertEqual(result["phase"], "stabilization")
         self.assertFalse(result["selectionRequired"])
         self.assertIsNone(result["selected"])
@@ -26,19 +26,27 @@ class MigrationInventoryTests(unittest.TestCase):
         self.assertEqual(result["currentCompleted"], [])
         self.assertEqual(len(result["frozenModules"]), 8)
         self.assertEqual(len(result["frozenPatches"]), 7)
-        self.assertEqual(result["serviceWorker"]["mode"], "isolated-development")
-        self.assertEqual(result["serviceWorker"]["cachePrefix"], "atelier-v14-dev-")
-        self.assertTrue(result["serviceWorker"]["preserveBaselineCaches"])
-        self.assertTrue(result["serviceWorker"]["precacheV14Assets"])
-        rc = self.base["policy"]["stabilization"]["releaseCandidatePackaging"]
+        worker = result["serviceWorker"]
+        self.assertEqual(worker["mode"], "isolated-development")
+        self.assertEqual(worker["cachePrefix"], "atelier-v14-dev-")
+        self.assertTrue(worker["preserveBaselineCaches"])
+        self.assertTrue(worker["precacheV14Assets"])
+        self.assertTrue(worker["ownCacheLookupOnly"])
+        self.assertTrue(worker["crossNamespaceReadsForbidden"])
+        rc = result["releaseCandidatePackaging"]
         self.assertTrue(rc["enabled"])
         self.assertTrue(rc["stripDevelopmentDiagnostics"])
         self.assertEqual(rc["cachePrefix"], "atelier-v14-rc-")
         self.assertTrue(rc["requirePriorSignoffBeforePromotion"])
-        staging = self.base["policy"]["stabilization"]["staging"]
+        staging = result["staging"]
         self.assertTrue(staging["enabled"])
-        self.assertEqual(staging["publishPath"], "v14-rc-staging/")
+        self.assertEqual(staging["publishBasePath"], "v14-rc-staging/")
+        self.assertTrue(staging["versionedCandidatePath"])
+        self.assertTrue(staging["preservePriorCandidates"])
+        self.assertEqual(staging["candidatePath"], "v14-rc-staging/14.0.0-dev.18/")
         self.assertTrue(staging["productionRootRuntimeImmutable"])
+        self.assertTrue(staging["runnerCacheBustRequired"])
+        self.assertTrue(staging["liveHttpsVerificationRequired"])
         self.assertGreaterEqual(result["blockedCount"], 4)
 
     def migration_copy(self):
@@ -56,7 +64,7 @@ class MigrationInventoryTests(unittest.TestCase):
     def test_stabilization_rejects_selected_next(self):
         data = copy.deepcopy(self.base)
         candidate = data["boundaries"][1]
-        candidate.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.18","stateRisk":"low","mutationRisk":"none","browserCoupling":"none","testability":"high"})
+        candidate.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.19","stateRisk":"low","mutationRisk":"none","browserCoupling":"none","testability":"high"})
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
@@ -90,6 +98,48 @@ class MigrationInventoryTests(unittest.TestCase):
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
+    def test_stabilization_requires_own_cache_reads(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["serviceWorker"]["ownCacheLookupOnly"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_stabilization_forbids_cross_namespace_reads(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["serviceWorker"]["crossNamespaceReadsForbidden"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_staging_requires_versioned_candidate_path(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["staging"]["versionedCandidatePath"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_staging_requires_prior_candidate_preservation(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["staging"]["preservePriorCandidates"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_staging_requires_runner_cache_bust(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["staging"]["runnerCacheBustRequired"] = False
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_staging_candidate_url_must_match_version(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["staging"]["candidateUrl"] = "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.17/app/"
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
+    def test_staging_runner_query_must_match_version(self):
+        data = copy.deepcopy(self.base)
+        data["policy"]["stabilization"]["staging"]["runnerUrl"] = "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.17"
+        with self.assertRaises(InventoryError):
+            validate_inventory(data)
+
     def test_selection_required_needs_exactly_one_candidate(self):
         data = self.migration_copy()
         data["policy"]["selectionRequired"] = True
@@ -103,7 +153,7 @@ class MigrationInventoryTests(unittest.TestCase):
         completed["decision"] = "hold"
         completed["targetMilestone"] = None
         for boundary in data["boundaries"][1:3]:
-            boundary.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.18","stateRisk":"low","mutationRisk":"none","browserCoupling":"none","testability":"high"})
+            boundary.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.19","stateRisk":"low","mutationRisk":"none","browserCoupling":"none","testability":"high"})
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
@@ -114,7 +164,7 @@ class MigrationInventoryTests(unittest.TestCase):
         current["decision"] = "hold"
         current["targetMilestone"] = None
         blocked = next(b for b in data["boundaries"] if b["ownership"] == "project-persistence")
-        blocked.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.18","stateRisk":"low","mutationRisk":"none","browserCoupling":"none","testability":"high"})
+        blocked.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.19","stateRisk":"low","mutationRisk":"none","browserCoupling":"none","testability":"high"})
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
@@ -125,7 +175,7 @@ class MigrationInventoryTests(unittest.TestCase):
         current["decision"] = "hold"
         current["targetMilestone"] = None
         candidate = data["boundaries"][1]
-        candidate.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.18","stateRisk":"low","mutationRisk":"indirect","browserCoupling":"none","testability":"high"})
+        candidate.update({"decision":"selected-next","targetMilestone":"14.0.0-dev.19","stateRisk":"low","mutationRisk":"indirect","browserCoupling":"none","testability":"high"})
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
