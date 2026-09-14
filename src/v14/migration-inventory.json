@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.17",
+  "version": "14.0.0-dev.18",
   "policy": {
     "phase": "stabilization",
     "excludedByDefault": [
@@ -43,7 +43,9 @@
         "mode": "isolated-development",
         "cachePrefix": "atelier-v14-dev-",
         "preserveBaselineCaches": true,
-        "precacheV14Assets": true
+        "precacheV14Assets": true,
+        "ownCacheLookupOnly": true,
+        "crossNamespaceReadsForbidden": true
       },
       "releaseCandidatePackaging": {
         "enabled": true,
@@ -60,12 +62,19 @@
       "staging": {
         "enabled": true,
         "publishBranch": "main",
-        "publishPath": "v14-rc-staging/",
-        "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/app/",
-        "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html",
+        "publishBasePath": "v14-rc-staging/",
+        "versionedCandidatePath": true,
+        "preservePriorCandidates": true,
+        "candidatePath": "v14-rc-staging/14.0.0-dev.18/",
+        "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/app/",
+        "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.18",
+        "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/staging-status.json",
         "productionUrl": "https://thiepn.github.io/atelier/",
         "productionRootRuntimeImmutable": true,
         "serviceWorkerScopeIsolatedByPath": true,
+        "parentProductionWorkerMayControlFirstNavigation": true,
+        "runnerCacheBustRequired": true,
+        "liveHttpsVerificationRequired": true,
         "physicalEvidenceRunner": "acceptance.html"
       }
     }
