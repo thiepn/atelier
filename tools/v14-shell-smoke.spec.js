@@ -57,6 +57,68 @@ function collectRuntimeErrors(page) {
   return { pageErrors, consoleErrors };
 }
 
+async function assertCoreHelpers(page) {
+  const safeName = await page.evaluate(() => globalThis.AtelierV14Shell.files.safeName('Café / Client Plan'));
+  expect(safeName).toBe('cafe-client-plan');
+
+  const iconProbe = await page.evaluate(() => globalThis.AtelierV14Shell.icons.render(
+    'search',
+    20,
+    { cube: 'fallback', search: 'M1 1L2 2' }
+  ));
+  expect(iconProbe).toBe('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1L2 2"/></svg>');
+
+  const escaped = await page.evaluate(() => ({
+    html: globalThis.AtelierV14Shell.text.escapeHtml(`<script a="1">'&'</script>`),
+    xml: globalThis.AtelierV14Shell.text.escapeXml(`<tag a="1">'&'</tag>`),
+  }));
+  expect(escaped).toEqual({
+    html: '&lt;script a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/script&gt;',
+    xml: '&lt;tag a=&quot;1&quot;&gt;&apos;&amp;&apos;&lt;/tag&gt;',
+  });
+
+  const unitProbe = await page.evaluate(() => {
+    const format = globalThis.AtelierV14Shell.units.formatDimension;
+    return {
+      metres: format(1.234, 'm'),
+      feet: format(1, 'ft'),
+      inches: format(1, 'in'),
+      centimetres: format(1.2, 'cm'),
+      millimetres: format(1.2345, 'mm'),
+      feetInches: format(1, 'ft-in'),
+    };
+  });
+  expect(unitProbe).toEqual({
+    metres: '1.23 m',
+    feet: '3.28 ft',
+    inches: '39.37 in',
+    centimetres: '120.00 cm',
+    millimetres: '1235 mm',
+    feetInches: '3′ 3.375″',
+  });
+}
+
+async function assertModuleVersions(page) {
+  const versions = await page.evaluate(() => ({
+    notifications: globalThis.AtelierV14Shell.notifications.version,
+    dialogs: globalThis.AtelierV14Shell.dialogs.version,
+    commands: globalThis.AtelierV14Shell.commands.version,
+    files: globalThis.AtelierV14Shell.files.version,
+    icons: globalThis.AtelierV14Shell.icons.version,
+    text: globalThis.AtelierV14Shell.text.version,
+    units: globalThis.AtelierV14Shell.units.version,
+  }));
+  expect(versions).toEqual({
+    notifications: '14.0.0-dev.3',
+    dialogs: '14.0.0-dev.6',
+    commands: '14.0.0-dev.4',
+    files: '14.0.0-dev.5',
+    icons: '14.0.0-dev.9',
+    text: '14.0.0-dev.10',
+    units: '14.0.0-dev.12',
+  });
+}
+
 test('V14 shell bridges remain responsive, accessible and cross-browser compatible', async ({ page }, testInfo) => {
   const { pageErrors, consoleErrors } = collectRuntimeErrors(page);
 
@@ -87,9 +149,45 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
     'webkit-tablet': { width: 834, height: 1194 },
   };
   const isTouchProject = Boolean(touchProjects[testInfo.project.name]);
+  const isWebKitTouch = testInfo.project.name === 'webkit-mobile' || testInfo.project.name === 'webkit-tablet';
+
   if (isTouchProject) {
     expect(await page.evaluate(() => navigator.maxTouchPoints || 0)).toBeGreaterThan(0);
     expect(page.viewportSize()).toEqual(touchProjects[testInfo.project.name]);
+  }
+
+  if (isWebKitTouch) {
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
+
+    expect(await openCommandPaletteThroughModule(page)).toBe(true);
+    await expect(dialog).toHaveAttribute('open', '');
+    await expect(dialog).toHaveAttribute('aria-modal', 'true');
+    await expect(page.locator('#dialog-title')).toHaveText('Find a tool or an object.');
+    const search = page.locator('#command-search');
+    await expect(search).toBeVisible();
+    await expect(search).toHaveAttribute('aria-label', 'Search commands and objects');
+    await search.fill('Export deliverables');
+    const result = page.locator('#command-results [data-command="export"]');
+    await expect(result).toHaveCount(1);
+    await expect(result).toContainText('Export deliverables');
+    await dialog.locator('[data-action="close-dialog"]').click();
+    await expect(dialog).not.toHaveAttribute('open', '');
+
+    await page.evaluate(() => globalThis.AtelierV14Shell.notifications.toast('V14 browser smoke'));
+    await expect(page.locator('#toast')).toHaveText('V14 browser smoke');
+    await assertCoreHelpers(page);
+    await assertModuleVersions(page);
+    expect(pageErrors, `page errors: ${pageErrors.join('\n')}`).toEqual([]);
+    expect(consoleErrors, `console errors: ${consoleErrors.join('\n')}`).toEqual([]);
+    return;
+  }
+
+  if (isTouchProject) {
     await toggle.click();
     await expect(toggle).toHaveAttribute('aria-expanded', 'true');
     await expect(panel).toBeVisible();
@@ -143,63 +241,8 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
   await expect(page.locator('#toast')).toHaveText('V14 browser smoke');
   await expect(page.locator('#toast')).toHaveClass(/show/);
 
-  const safeName = await page.evaluate(() => globalThis.AtelierV14Shell.files.safeName('Café / Client Plan'));
-  expect(safeName).toBe('cafe-client-plan');
-
-  const iconProbe = await page.evaluate(() => globalThis.AtelierV14Shell.icons.render(
-    'search',
-    20,
-    { cube: 'fallback', search: 'M1 1L2 2' }
-  ));
-  expect(iconProbe).toBe('<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1L2 2"/></svg>');
-
-  const escaped = await page.evaluate(() => ({
-    html: globalThis.AtelierV14Shell.text.escapeHtml(`<script a="1">'&'</script>`),
-    xml: globalThis.AtelierV14Shell.text.escapeXml(`<tag a="1">'&'</tag>`),
-  }));
-  expect(escaped).toEqual({
-    html: '&lt;script a=&quot;1&quot;&gt;&#39;&amp;&#39;&lt;/script&gt;',
-    xml: '&lt;tag a=&quot;1&quot;&gt;&apos;&amp;&apos;&lt;/tag&gt;',
-  });
-
-  const unitProbe = await page.evaluate(() => {
-    const format = globalThis.AtelierV14Shell.units.formatDimension;
-    return {
-      metres: format(1.234, 'm'),
-      feet: format(1, 'ft'),
-      inches: format(1, 'in'),
-      centimetres: format(1.2, 'cm'),
-      millimetres: format(1.2345, 'mm'),
-      feetInches: format(1, 'ft-in'),
-    };
-  });
-  expect(unitProbe).toEqual({
-    metres: '1.23 m',
-    feet: '3.28 ft',
-    inches: '39.37 in',
-    centimetres: '120.00 cm',
-    millimetres: '1235 mm',
-    feetInches: '3′ 3.375″',
-  });
-
-  const versions = await page.evaluate(() => ({
-    notifications: globalThis.AtelierV14Shell.notifications.version,
-    dialogs: globalThis.AtelierV14Shell.dialogs.version,
-    commands: globalThis.AtelierV14Shell.commands.version,
-    files: globalThis.AtelierV14Shell.files.version,
-    icons: globalThis.AtelierV14Shell.icons.version,
-    text: globalThis.AtelierV14Shell.text.version,
-    units: globalThis.AtelierV14Shell.units.version,
-  }));
-  expect(versions).toEqual({
-    notifications: '14.0.0-dev.3',
-    dialogs: '14.0.0-dev.6',
-    commands: '14.0.0-dev.4',
-    files: '14.0.0-dev.5',
-    icons: '14.0.0-dev.9',
-    text: '14.0.0-dev.10',
-    units: '14.0.0-dev.12',
-  });
+  await assertCoreHelpers(page);
+  await assertModuleVersions(page);
 
   expect(pageErrors, `page errors: ${pageErrors.join('\n')}`).toEqual([]);
   expect(consoleErrors, `console errors: ${consoleErrors.join('\n')}`).toEqual([]);
