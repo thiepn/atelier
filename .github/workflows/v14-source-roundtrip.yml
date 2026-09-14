@@ -42,6 +42,7 @@ jobs:
           node --check src/v14/shell/commands.js
           node --check src/v14/shell/files.js
           node --check src/v14/shell/icons.js
+          node --check src/v14/shell/text.js
           node --check src/v14/dev-status/dev-status.js
           node --check tools/v14-playwright.config.js
           node --check tools/v14-shell-smoke.spec.js
@@ -61,6 +62,9 @@ jobs:
 
       - name: Run icon renderer behavior test
         run: node tools/test_v14_icons.mjs src/v14/shell/icons.js
+
+      - name: Run text escaping behavior test
+        run: node tools/test_v14_text.mjs src/v14/shell/text.js
 
       - name: Verify frozen V14 baseline
         run: python tools/v14_source.py verify-lock --input index.html --lock src/source.lock.json
@@ -99,7 +103,7 @@ jobs:
           for path in source.get('modules', []):
             assert f'v14/{path}' in html
             assert (root / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
-          for bridge in ('AtelierV14Shell?.notifications?.announce', 'AtelierV14Shell?.dialogs', 'AtelierV14Shell?.commands', 'AtelierV14Shell?.files', 'AtelierV14Shell?.icons'):
+          for bridge in ('AtelierV14Shell?.notifications?.announce', 'AtelierV14Shell?.dialogs', 'AtelierV14Shell?.commands', 'AtelierV14Shell?.files', 'AtelierV14Shell?.icons', 'AtelierV14Shell?.text'):
             assert bridge in html
           print('V14_ARTIFACT_STRUCTURE_OK=true version='+built['version'])
           PY
