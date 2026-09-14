@@ -19,7 +19,8 @@
     "webglExport": "PASS"
   },
   "signoffTooling": {
-    "physicalRunner": "acceptance/DEVICE_ACCEPTANCE_13.3.0.html",
+    "physicalRunner": "acceptance/DEVICE_ACCEPTANCE_13.3.1.html",
+    "evidenceGenerator": "acceptance/DEVICE_ACCEPTANCE_13.3.0.html",
     "signoffCenter": "acceptance/SIGNOFF_CENTER_13.3.1.html",
     "validator": "acceptance/validate_acceptance.py",
     "requiredTargets": 5,
@@ -31,7 +32,10 @@
     "missingEvidenceBlocksSignoff": "pass",
     "browserFiveFileUnlock": "pass",
     "browserTamperedFileBlocks": "pass",
-    "mobileNoHorizontalOverflow": "pass"
+    "mobileNoHorizontalOverflow": "pass",
+    "resumeWrapperSyntax": "pass",
+    "resumeWrapperStaticReview": "pass",
+    "resumeWrapperInteractiveHarness": "not-executed-environment-navigation-blocked"
   },
   "physicalTargets": [
     {"id":"firefox-desktop","status":"pending"},
