@@ -18,7 +18,7 @@ class MigrationInventoryTests(unittest.TestCase):
 
     def test_repository_inventory_is_valid_stabilization(self):
         result = validate_inventory(copy.deepcopy(self.base))
-        self.assertEqual(result["version"], "14.0.0-dev.15")
+        self.assertEqual(result["version"], "14.0.0-dev.16")
         self.assertEqual(result["phase"], "stabilization")
         self.assertFalse(result["selectionRequired"])
         self.assertIsNone(result["selected"])
@@ -30,11 +30,16 @@ class MigrationInventoryTests(unittest.TestCase):
         self.assertEqual(result["serviceWorker"]["cachePrefix"], "atelier-v14-dev-")
         self.assertTrue(result["serviceWorker"]["preserveBaselineCaches"])
         self.assertTrue(result["serviceWorker"]["precacheV14Assets"])
-        rc = self.base["policy"]["stabilization"]["releaseCandidatePackaging"]
+        rc = result["releaseCandidatePackaging"]
         self.assertTrue(rc["enabled"])
         self.assertTrue(rc["stripDevelopmentDiagnostics"])
         self.assertEqual(rc["cachePrefix"], "atelier-v14-rc-")
         self.assertTrue(rc["requirePriorSignoffBeforePromotion"])
+        self.assertEqual(rc["physicalAcceptancePlan"], "acceptance/v14-rc-required-targets.json")
+        self.assertEqual(rc["physicalAcceptanceValidator"], "acceptance/validate_v14_rc_acceptance.py")
+        self.assertEqual(rc["cutoverPlan"], "acceptance/v14-rc-cutover-plan.json")
+        self.assertTrue(rc["allowPhysicalEvidenceBeforePriorSignoff"])
+        self.assertFalse(rc["allowPromotionBeforePriorSignoff"])
         self.assertGreaterEqual(result["blockedCount"], 4)
 
     def migration_copy(self):
@@ -54,7 +59,7 @@ class MigrationInventoryTests(unittest.TestCase):
         candidate = data["boundaries"][1]
         candidate.update({
             "decision": "selected-next",
-            "targetMilestone": "14.0.0-dev.16",
+            "targetMilestone": "14.0.0-dev.17",
             "stateRisk": "low",
             "mutationRisk": "none",
             "browserCoupling": "none",
@@ -81,15 +86,16 @@ class MigrationInventoryTests(unittest.TestCase):
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
-    def test_stabilization_requires_baseline_cache_preservation(self):
-        data = copy.deepcopy(self.base)
-        data["policy"]["stabilization"]["serviceWorker"]["preserveBaselineCaches"] = False
-        with self.assertRaises(InventoryError):
-            validate_inventory(data)
+    def test_rc_certification_bindings_are_mandatory(self):
+        for key in ("physicalAcceptancePlan", "physicalAcceptanceValidator", "cutoverPlan"):
+            data = copy.deepcopy(self.base)
+            data["policy"]["stabilization"]["releaseCandidatePackaging"].pop(key)
+            with self.subTest(key=key), self.assertRaises(InventoryError):
+                validate_inventory(data)
 
-    def test_stabilization_requires_v14_precache(self):
+    def test_rc_promotion_cannot_precede_prior_signoff(self):
         data = copy.deepcopy(self.base)
-        data["policy"]["stabilization"]["serviceWorker"]["precacheV14Assets"] = False
+        data["policy"]["stabilization"]["releaseCandidatePackaging"]["allowPromotionBeforePriorSignoff"] = True
         with self.assertRaises(InventoryError):
             validate_inventory(data)
 
@@ -108,7 +114,7 @@ class MigrationInventoryTests(unittest.TestCase):
         for boundary in data["boundaries"][1:3]:
             boundary.update({
                 "decision": "selected-next",
-                "targetMilestone": "14.0.0-dev.16",
+                "targetMilestone": "14.0.0-dev.17",
                 "stateRisk": "low",
                 "mutationRisk": "none",
                 "browserCoupling": "none",
@@ -126,7 +132,7 @@ class MigrationInventoryTests(unittest.TestCase):
         blocked = next(b for b in data["boundaries"] if b["ownership"] == "project-persistence")
         blocked.update({
             "decision": "selected-next",
-            "targetMilestone": "14.0.0-dev.16",
+            "targetMilestone": "14.0.0-dev.17",
             "stateRisk": "low",
             "mutationRisk": "none",
             "browserCoupling": "none",
@@ -144,7 +150,7 @@ class MigrationInventoryTests(unittest.TestCase):
         candidate = data["boundaries"][1]
         candidate.update({
             "decision": "selected-next",
-            "targetMilestone": "14.0.0-dev.16",
+            "targetMilestone": "14.0.0-dev.17",
             "stateRisk": "low",
             "mutationRisk": "indirect",
             "browserCoupling": "none",
