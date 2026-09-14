@@ -43,5 +43,25 @@ module.exports = defineConfig({
         viewport: { width: 1280, height: 800 },
       },
     },
+    {
+      name: 'webkit-mobile',
+      use: {
+        browserName: 'webkit',
+        viewport: { width: 390, height: 844 },
+        deviceScaleFactor: 3,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
+    {
+      name: 'webkit-tablet',
+      use: {
+        browserName: 'webkit',
+        viewport: { width: 834, height: 1194 },
+        deviceScaleFactor: 2,
+        isMobile: true,
+        hasTouch: true,
+      },
+    },
   ],
 });
