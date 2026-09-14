@@ -4,7 +4,7 @@ This directory is the home for authored V14 code.
 
 ## Current checkpoint
 
-**14.0.0-dev.7** is the current V14 development artifact. It is isolated from production and is not a V13.3.1 production certification result.
+**14.0.0-dev.8** is the current V14 development artifact. It is isolated from production and is not a V13.3.1 production certification result.
 
 ## Build
 
@@ -37,6 +37,9 @@ The builder:
 - `shell/commands.js` — command-palette opening, search and result rendering.
 - `shell/files.js` — browser downloads and safe filename normalization.
 - `dev-status/` — isolated V14 development diagnostics.
+- `../../tools/v14-playwright.config.js` — Chromium desktop/mobile, Firefox and WebKit integration matrix.
+- `../../tools/v14-shell-smoke.spec.js` — integrated responsive/accessibility shell gate.
+- `../../tools/v14-offline-pwa.spec.js` — service-worker-controlled offline development-artifact gate.
 
 ## Bridge rules
 
@@ -50,19 +53,25 @@ The V14 workflow currently performs:
 
 1. source-tool unit tests;
 2. overlay-build/patch-engine unit tests;
-3. JavaScript syntax checks for every V14 module;
+3. JavaScript syntax checks for every V14 module and browser-test file;
 4. independent behavior tests for notifications, dialogs, commands and file utilities;
 5. exact 13.2.0 baseline lock verification;
 6. byte-for-byte source round-trip verification;
 7. real development artifact generation and manifest/bridge validation;
-8. Chromium integration smoke against the generated artifact;
-9. hashed artifact upload.
+8. Chromium desktop integration smoke;
+9. Chromium 390×844 mobile/touch integration smoke;
+10. Firefox desktop integration smoke;
+11. WebKit desktop integration smoke;
+12. responsive horizontal-overflow checks;
+13. keyboard, Escape, focus-restoration and shell accessibility checks;
+14. controlled Chromium offline/PWA reload verification;
+15. hashed artifact upload.
 
-The Chromium smoke drives the actual legacy keyboard and action paths through the V14 bridges, rather than testing the modules only in isolation.
+The integration suite drives actual legacy keyboard/action paths through the V14 bridges rather than testing modules only in isolation.
 
 ## Current ownership boundary
 
-V14 now owns post-bootstrap generic shell behavior for:
+V14 owns post-bootstrap generic shell behavior for:
 
 - notifications/status;
 - modal/dialog DOM behavior;
@@ -87,7 +96,8 @@ The legacy runtime still owns:
 4. Every migrated subsystem needs independent behavior coverage plus integrated artifact coverage.
 5. Exact bridges must fail closed if the locked legacy source no longer matches.
 6. `main` remains the production/certification line until an explicit V14 release cutover.
+7. Automated browser/PWA development checks never substitute for V13.3.1 physical-device evidence.
 
 ## Next milestone
 
-Dev.8 should prioritize **cross-browser, responsive, keyboard and PWA/offline integration hardening** of the generated artifact before another more stateful subsystem is extracted.
+Dev.9 should move from generic shell infrastructure to the **next low-state, high-isolation legacy boundary**, selected by testability and dependency surface. Persistence, project schema, geometry and rendering should remain untouched unless a concrete V14 requirement justifies their migration.
