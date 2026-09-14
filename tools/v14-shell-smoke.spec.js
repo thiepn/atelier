@@ -59,9 +59,14 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
   ));
   expect(overflowPx).toBeLessThanOrEqual(1);
 
-  if (testInfo.project.name === 'chromium-mobile') {
+  const touchProjects = {
+    'chromium-mobile': { width: 390, height: 844 },
+    'webkit-mobile': { width: 390, height: 844 },
+    'webkit-tablet': { width: 834, height: 1194 },
+  };
+  if (touchProjects[testInfo.project.name]) {
     expect(await page.evaluate(() => navigator.maxTouchPoints || 0)).toBeGreaterThan(0);
-    expect(page.viewportSize()).toEqual({ width: 390, height: 844 });
+    expect(page.viewportSize()).toEqual(touchProjects[testInfo.project.name]);
   }
 
   await toggle.focus();
