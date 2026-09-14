@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-module-manifest-v1",
-  "version": "14.0.0-dev.11",
+  "version": "14.0.0-dev.12",
   "styles": [
     "dev-status/dev-status.css"
   ],
@@ -11,6 +11,7 @@
     "shell/files.js",
     "shell/icons.js",
     "shell/text.js",
+    "shell/units.js",
     "dev-status/dev-status.js"
   ],
   "patches": [
@@ -19,7 +20,8 @@
     "patches/commands-bridge.json",
     "patches/files-bridge.json",
     "patches/icons-bridge.json",
-    "patches/text-bridge.json"
+    "patches/text-bridge.json",
+    "patches/units-bridge.json"
   ],
   "passthrough": [
     ".nojekyll",
