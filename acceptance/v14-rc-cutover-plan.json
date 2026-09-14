@@ -13,10 +13,10 @@
     "automaticPromotionAllowed": false
   },
   "staging": {
-    "status": "live-https-verified",
-    "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/app/",
-    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/acceptance.html?v=14.0.0-dev.18",
-    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.18/staging-status.json",
+    "status": "pending-publication",
+    "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/app/",
+    "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/acceptance.html?v=14.0.0-dev.19",
+    "statusUrl": "https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/staging-status.json",
     "httpsRequired": true,
     "sameOriginRuntimeRequired": true,
     "versionedPathRequired": true,
@@ -60,7 +60,7 @@
   "currentState": {
     "priorReleaseSignoff": "blocked",
     "rcPhysicalEvidence": "0/5",
-    "stagingOrigin": "live-https-verified",
+    "stagingOrigin": "pending-publication",
     "productionCutover": "blocked",
     "rollbackCertification": "not-run"
   }
