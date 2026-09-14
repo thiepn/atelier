@@ -1,6 +1,6 @@
 # Atelier Space Studio
 
-> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.14** as a separate, uncertified artifact. Production remains Atelier **13.2.0** on `main`.
+> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.15** development and release-candidate artifacts. Production remains Atelier **13.2.0** on `main`.
 
 Atelier is a local-first browser space-planning studio with a static PWA deployment.
 
@@ -23,81 +23,98 @@ Completed development milestones:
 11. **dev.11 — Migration/dependency inventory** — machine-validated risk policy for remaining legacy ownership.
 12. **dev.12 — Dimension formatting** — pure `fmtDim` behavior moved into the units service.
 13. **dev.13 — Stabilization freeze** — module/bridge architecture frozen; new legacy bridges and production cutover explicitly disallowed.
-14. **dev.14 — Isolated V14 offline shell** — generated V14-specific service worker/cache, overlay pre-cache and baseline-cache preservation.
+14. **dev.14 — Isolated V14 offline shell** — generated V14-specific development worker/cache and baseline-cache preservation.
+15. **dev.15 — Release-candidate packaging boundary** — stripped RC artifact, isolated RC cache, machine-readable certification gate and fail-closed promotion check.
 
-Build the current development artifact with:
+Build the normal development artifact with:
 
 ```bash
-python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir dist --force
+python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir v14-dist --force
+```
+
+Package its RC form with:
+
+```bash
+python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
 ```
 
 Architecture: `ARCHITECTURE_V14.md`
 
 ## Current validation
 
-The latest validated artifact is **`atelier-v14-dev.14`**, workflow run **`34872824160`**.
+Latest successful workflow: **`34882066210`**.
+
+Uploaded artifacts:
+
+- `atelier-v14-dev.15`
+- `atelier-v14-dev.15-rc`
 
 The current gate passes:
 
-- source and overlay unit tests;
-- migration-inventory policy tests and validation;
-- behavior tests for notifications, dialogs, commands, files, icons, text escaping and dimensions;
-- frozen 13.2.0 baseline verification;
-- byte-for-byte source round trip;
-- exact bridge occurrence checks;
-- architecture-freeze enforcement;
-- generated V14 service-worker identity/cache/core verification;
+- source and overlay tests;
+- migration/stabilization policy validation;
+- RC packaging-policy validation;
+- all shell/helper behavior tests;
+- frozen 13.2.0 baseline and byte-for-byte source reconstruction;
+- exact bridge and architecture-freeze checks;
+- isolated development worker/cache validation;
+- RC diagnostics removal;
+- isolated `atelier-v14-rc-*` RC worker/cache validation;
 - Chromium desktop integration;
-- Chromium 390×844 mobile/touch integration;
+- Chromium mobile/touch integration;
 - Firefox desktop integration;
 - WebKit desktop integration;
-- responsive overflow, focus/Escape and accessibility checks;
-- direct text and unit-formatting browser probes;
-- controlled offline reload;
-- V14 stale-cache cleanup without deleting the 13.2.0 baseline cache namespace;
-- artifact upload.
+- development offline reload;
+- stripped RC Chromium startup and offline reload;
+- separate development and RC artifact uploads.
 
-## Current V14 architecture state
+## RC packaging state
 
-The V14 module/bridge surface is frozen during stabilization.
+Dev.15 creates a genuine **release-candidate-shaped artifact**, but it does not promote it.
 
-V14 currently owns post-bootstrap generic shell/helper behavior for:
+The RC package:
 
-- notifications/status;
-- dialogs/focus;
-- command-palette presentation/search;
-- browser file delivery/naming;
-- SVG icon serialization;
-- HTML/SVG/XML escaping;
-- dimension display formatting.
+- removes `dev-status/dev-status.css` and `dev-status/dev-status.js`;
+- removes the visible `V14 DEV` diagnostics surface;
+- uses `atelier-v14-rc-<version>` rather than the development cache namespace;
+- removes diagnostic files from its service-worker offline core;
+- emits `v14-rc-status.json`;
+- records `artifactKind: release-candidate` and `diagnosticsStripped: true`;
+- calculates `productionEligible` from the prior certification state.
 
-Legacy 13.2.0 still owns project persistence, backups, schema/validation, geometry, rendering, catalog/application state, command execution, project identity and domain export semantics.
+The current RC correctly reports `productionEligible: false`.
 
-The generated development service worker now uses an isolated `atelier-v14-dev-<version>` cache and pre-caches all V14 overlay assets. It does not use the production `atelier-space-studio-*` namespace for stale-cache deletion.
+Current promotion blockers are:
+
+1. `prior-final-signoff-not-pass`
+2. `runtime-advance-not-authorized`
+3. `physical-evidence-incomplete`
+
+A packaging attempt with `--require-production-eligible` fails closed while those blockers exist.
+
+## Architecture state
+
+The V14 module/bridge surface remains frozen during stabilization.
+
+V14 owns only generic post-bootstrap shell/helper presentation plus V14 packaging. Legacy 13.2.0 remains authoritative for project persistence, backups, schema/validation, geometry, rendering, catalog/application state, command execution, identity and domain export semantics.
+
+No stateful subsystem was migrated in dev.13, dev.14 or dev.15.
 
 ## Production / cutover status
 
-**V14 is not production-ready and is not deployed.**
+**V14 is not deployed and production cutover is not authorized.**
 
-Current hard blockers include:
+`CERTIFICATION_MATRIX_13.3.1.json` still records:
 
-1. `CERTIFICATION_MATRIX_13.3.1.json` still records **0/5** physical targets and `runtimeMayAdvanceToV14: false`.
-2. The V14 build manifest is intentionally `developmentOnly: true`.
-3. `dev-status/` is still injected and visibly labels the artifact `V14 DEV`.
-4. `production.config.json` still identifies release `13.2.0` and its production certification contract.
-5. No V14 physical-device production acceptance has been completed.
-6. No V14 production-origin cutover verification has been performed.
+- physical evidence: **0/5**;
+- final sign-off: blocked;
+- `runtimeMayAdvanceToV14: false`.
 
-Therefore the stabilization policy keeps `allowProductionCutover: false` and has no `selected-next` migration boundary.
+Production therefore remains:
 
-## Production status
-
-**Production runtime: 13.2.0 — V13.3.1 physical evidence completion/sign-off remains blocked.**
-
-- Production URL: `https://thiepn.github.io/atelier/`
-- Production release commit: `1151f66e58ff4950d7c8ba265834c59d1a46bf5e`
-- Production `index.html` SHA-256: `561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46`
-- Production `sw.js` SHA-256: `e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236`
+- Runtime: Atelier **13.2.0**
+- URL: `https://thiepn.github.io/atelier/`
+- Release commit: `1151f66e58ff4950d7c8ba265834c59d1a46bf5e`
 - Production PWA cache: `atelier-space-studio-13.2.0`
 
 Required V13.3.1 physical targets remain:
@@ -108,17 +125,19 @@ Required V13.3.1 physical targets remain:
 4. Safari iPad / Home Screen Web App
 5. Chrome Android Installed PWA
 
-The required final validator result remains `SIGNOFF_READY=true` with five distinct valid physical targets.
+Automated V14 browser/PWA testing does not substitute for those physical tests.
 
-Automated V14 browser/PWA tests do not substitute for those physical tests.
-
-## Key architecture files
+## Key files
 
 - `ARCHITECTURE_V13.md`
 - `ARCHITECTURE_V14.md`
 - `src/source.lock.json`
 - `src/v14/manifest.json`
 - `src/v14/migration-inventory.json`
-- `production.config.json`
+- `tools/v14_build.py`
+- `tools/v14_rc_package.py`
 - `.github/workflows/v14-source-roundtrip.yml`
+- `RELEASE_NOTES_14.0.0-dev.15.md`
+- `TEST_REPORT_14.0.0-dev.15.md`
+- `production.config.json`
 - `CERTIFICATION_MATRIX_13.3.1.json`
