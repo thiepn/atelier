@@ -21,7 +21,8 @@
 - Per-target local draft storage implemented: PASS by static review
 - Restored drafts force attestation back to unchecked: PASS by static review
 - Target-switch synchronous save protection implemented: PASS by static review
-- Wrapper JavaScript syntax (`node --check`): PASS
+- Selected target is mirrored into the wrapper URL so reloads resume the correct device profile: PASS by static review
+- Wrapper JavaScript syntax after final resume changes (`node --check`): PASS
 - Interactive local browser harness: NOT EXECUTED — the current execution environment blocks localhost and `file://` navigation before application code loads. This is an environment restriction, not an Atelier failure.
 
 No claim is made that this automated/static wrapper verification substitutes for any required physical-device acceptance target.
