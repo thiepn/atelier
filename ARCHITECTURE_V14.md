@@ -2,7 +2,7 @@
 
 ## Status
 
-V14 is an **uncertified development cycle** on branch `v14-development`. The current checkpoint is **14.0.0-dev.7**. Production remains Atelier 13.2.0 on `main`; V13.3.1 physical-device sign-off is a separate gate and is not implied by V14 development.
+V14 is an **uncertified development cycle** on branch `v14-development`. The current checkpoint is **14.0.0-dev.8**. Production remains Atelier 13.2.0 on `main`; V13.3.1 physical-device sign-off is a separate gate and is not implied by V14 development.
 
 ## Milestone 1 — Reproducible source boundary
 
@@ -35,7 +35,7 @@ V14 adds a second build layer that can add modular development code without edit
 - `tools/v14_build.py` — verifies the baseline lock, validates paths, applies audited exact patches, injects V14 assets at deterministic HTML anchors and emits a separate development artifact.
 - `tools/test_v14_build.py` — regression tests for deterministic output, unsafe paths, duplicate markers, lock mismatches, exact-patch behavior and output replacement rules.
 - `src/v14/dev-status/` — isolated development diagnostics module.
-- `.github/workflows/v14-source-roundtrip.yml` — verifies the source boundary, modules, bridges and generated artifact in CI.
+- `.github/workflows/v14-source-roundtrip.yml` — verifies source integrity, modules, bridges and the generated artifact in CI.
 
 ### Build flow
 
@@ -57,7 +57,7 @@ tools/v14_build.py + src/v14/manifest.json
 separate V14 development artifact
         │
         ├── v14-build-manifest.json
-        └── automated browser smoke gate
+        └── automated browser integration gates
 ```
 
 The root `index.html` is never rewritten by the V14 overlay builder.
@@ -109,35 +109,62 @@ Dev.6 completed successfully in workflow run `34794378836`.
 
 ## Milestone 7 — Real-browser shell integration
 
-`14.0.0-dev.7` changes the quality gate rather than adding another arbitrary shell extraction.
+`14.0.0-dev.7` changed the quality gate rather than adding another arbitrary shell extraction.
 
-### Browser gate
+`tools/v14-shell-smoke.spec.js` began driving the generated development artifact in real Chromium and verified the actual integration path from legacy keyboard handling through exact bridges into the modular shell. The workflow also became manifest-driven and concurrency-safe.
 
-`tools/v14-shell-smoke.spec.js` launches the generated V14 artifact in Chromium and verifies the real integration path:
+Dev.7 completed successfully in workflow run `34794583346`.
+
+## Milestone 8 — Cross-browser, responsive & offline integration
+
+`14.0.0-dev.8` hardens the existing modular shell before further extraction.
+
+### Browser matrix
+
+`tools/v14-playwright.config.js` defines four integration projects:
+
+1. Chromium desktop — 1280×800;
+2. Chromium mobile/touch — 390×844;
+3. Firefox desktop — 1280×800;
+4. WebKit desktop — 1280×800.
+
+`tools/v14-shell-smoke.spec.js` is now project-agnostic and verifies the generated artifact across the full matrix.
+
+### Integrated shell requirements
+
+The browser gate verifies:
 
 - all V14 shell services register;
-- the development diagnostics surface is present;
-- `Ctrl+K` travels through Atelier's existing keyboard handler;
-- the legacy command bridge opens the modular dialog shell;
-- command-search autofocus works;
-- `Export deliverables` resolves to the preserved `data-command="export"` action contract;
-- the existing dialog close-action path closes the modal;
-- the notification service updates the real toast surface;
-- filename normalization works in-browser;
-- uncaught page errors and console errors remain zero.
+- the development-only diagnostics surface is present and correctly labelled;
+- page-level horizontal overflow remains <= 1 px;
+- the mobile project exposes touch capability;
+- diagnostics keyboard activation works;
+- Escape closes diagnostics and leaves deterministic focus;
+- `Ctrl+K` reaches the existing legacy handler and modular command/dialog bridge;
+- the dialog exposes `aria-modal` and the command field exposes an accessible name;
+- native dialog Escape closes through the existing cancel path;
+- invoking focus is restored by the modular dialog service;
+- existing `data-command` execution contracts remain unchanged;
+- notification and filename services still work inside the integrated runtime;
+- uncaught page and console errors remain zero.
 
-The final dev.7 CI run `34794583346` passed the full source/build/unit/behavior pipeline plus this browser integration smoke.
+### Offline/PWA development gate
 
-### CI hardening
+`tools/v14-offline-pwa.spec.js` verifies a real controlled service-worker sequence on Chromium desktop:
 
-The V14 workflow is now manifest-driven:
+1. warm the generated artifact online;
+2. wait for the inherited 13.2.0 service worker to control the page;
+3. verify the inherited core cache is complete;
+4. ensure V14 overlay assets were fetched under control;
+5. take the browser context offline;
+6. reload from the service-worker cache;
+7. require the app and all V14 shell modules to return;
+8. verify diagnostics show offline + controlled state;
+9. verify the inherited core cache remains complete.
 
-- development version, style list, module list and patch sources are read from `src/v14/manifest.json`;
-- artifact names are derived from the manifest version;
-- superseded runs on the same branch are cancelled;
-- Markdown-only changes do not reinstall Chromium or rerun the development artifact suite.
+The test deliberately reuses the 13.2.0 service-worker runtime instead of inventing a V14 production cache contract. It proves the generated development artifact survives the inherited offline model; it does **not** claim physical-device or production certification.
 
-This removes duplicated milestone metadata from the workflow and reduces unnecessary CI work.
+Dev.8 passed the complete deterministic, module, cross-browser, responsive and offline suite in workflow run `34815078492`.
 
 ## Development diagnostics
 
@@ -147,7 +174,7 @@ It does not read or mutate project data, persistence, backups, geometry, catalog
 
 ## Current modular shell boundary
 
-As of dev.7, V14 modularizes four generic shell services:
+As of dev.8, V14 modularizes four generic shell services:
 
 1. notifications;
 2. dialogs;
@@ -156,12 +183,16 @@ As of dev.7, V14 modularizes four generic shell services:
 
 Command execution, project persistence, backup semantics, project schema, geometry, catalog ownership and rendering remain legacy-owned.
 
+## Current validation boundary
+
+The V14 development line now has three separate validation layers:
+
+1. **deterministic source/build validation** — baseline lock, lossless source round trip, exact bridge checks and hashed overlay artifact;
+2. **isolated module behavior validation** — independent tests for migrated shell services;
+3. **integrated runtime validation** — Chromium desktop/mobile, Firefox, WebKit and controlled offline Chromium execution against the generated artifact.
+
+None of these layers replaces the separate V13.3.1 physical-device production acceptance requirement.
+
 ## Next V14 milestone
 
-**Milestone 8 should harden cross-browser and responsive integration before extracting another stateful subsystem.** Recommended scope:
-
-- run generated-artifact browser smoke at desktop and mobile viewport sizes;
-- add Firefox and WebKit automated integration where stable;
-- verify keyboard focus/escape behavior and shell accessibility in the integrated artifact;
-- check offline/PWA behavior of the generated development artifact without claiming physical-device certification;
-- only after that gate is stable, choose the next legacy subsystem based on isolation and testability rather than extraction count.
+**Milestone 9 should resume incremental migration with one low-state, high-isolation legacy boundary.** The preferred candidate is the icon/rendering helper boundary because it is pure presentation logic with no project, persistence, geometry or renderer ownership. Dev.9 should retain the exact fallback path, add independent behavior coverage, and extend the integrated browser gate before any more stateful subsystem is considered.
