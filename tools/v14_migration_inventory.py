@@ -68,6 +68,7 @@ def validate_inventory(data: dict) -> dict:
     frozen_modules: list[str] = []
     frozen_patches: list[str] = []
     worker_policy: dict | None = None
+    rc_policy: dict | None = None
     if phase == "stabilization":
         require(selection_required is False, "stabilization phase requires selectionRequired=false")
         require(isinstance(stabilization, dict), "stabilization policy is required")
@@ -76,12 +77,22 @@ def validate_inventory(data: dict) -> dict:
         require(stabilization.get("allowProductionCutover") is False, "stabilization cannot authorize production cutover")
         frozen_modules = unique_string_list(stabilization.get("frozenModules"), "stabilization.frozenModules")
         frozen_patches = unique_string_list(stabilization.get("frozenPatches"), "stabilization.frozenPatches")
+
         worker_policy = stabilization.get("serviceWorker")
         require(isinstance(worker_policy, dict), "stabilization.serviceWorker policy is required")
         require(worker_policy.get("mode") == "isolated-development", "stabilization worker mode must be isolated-development")
         require(worker_policy.get("cachePrefix") == "atelier-v14-dev-", "unexpected stabilization worker cachePrefix")
         require(worker_policy.get("preserveBaselineCaches") is True, "stabilization worker must preserve baseline caches")
         require(worker_policy.get("precacheV14Assets") is True, "stabilization worker must precache V14 assets")
+
+        rc_policy = stabilization.get("releaseCandidatePackaging")
+        require(isinstance(rc_policy, dict), "stabilization.releaseCandidatePackaging policy is required")
+        require(rc_policy.get("enabled") is True, "release-candidate packaging must be enabled")
+        require(rc_policy.get("stripDevelopmentDiagnostics") is True, "release-candidate packaging must strip development diagnostics")
+        require(rc_policy.get("cachePrefix") == "atelier-v14-rc-", "unexpected release-candidate cachePrefix")
+        require(rc_policy.get("cachePrefix") != worker_policy.get("cachePrefix"), "release-candidate cachePrefix must differ from development cachePrefix")
+        require(rc_policy.get("certificationMatrix") == "CERTIFICATION_MATRIX_13.3.1.json", "release-candidate packaging must bind the 13.3.1 certification matrix")
+        require(rc_policy.get("requirePriorSignoffBeforePromotion") is True, "release-candidate promotion must require prior signoff")
     else:
         require(stabilization is None, "migration phase must not carry a stabilization freeze")
 
@@ -162,6 +173,7 @@ def validate_inventory(data: dict) -> dict:
         "frozenModules": frozen_modules,
         "frozenPatches": frozen_patches,
         "serviceWorker": worker_policy,
+        "releaseCandidatePackaging": rc_policy,
         "boundaryCount": len(boundaries),
         "blockedCount": sum(1 for b in boundaries if b["decision"] == "blocked"),
         "deferredCount": sum(1 for b in boundaries if b["decision"] in {"defer", "hold"}),
@@ -180,6 +192,7 @@ def main() -> None:
         print(f"V14_MIGRATION_INVENTORY_OK=false error={exc}")
         raise SystemExit(1)
 
+    rc = result["releaseCandidatePackaging"] or {}
     print(
         "V14_MIGRATION_INVENTORY_OK=true "
         f"version={result['version']} "
@@ -190,6 +203,7 @@ def main() -> None:
         f"frozen_modules={len(result['frozenModules'])} "
         f"frozen_patches={len(result['frozenPatches'])} "
         f"worker_mode={(result['serviceWorker'] or {}).get('mode', 'none')} "
+        f"rc_packaging={str(rc.get('enabled', False)).lower()} "
         f"boundaries={result['boundaryCount']} "
         f"blocked={result['blockedCount']} "
         f"deferred={result['deferredCount']}"
