@@ -1,0 +1,34 @@
+name: V14 source round-trip
+
+on:
+  push:
+    branches: [v14-development]
+  pull_request:
+    branches: [v14-development]
+
+permissions:
+  contents: read
+
+jobs:
+  source-roundtrip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run source-tool unit tests
+        run: PYTHONPATH=tools python -m unittest -v tools/test_v14_source.py
+
+      - name: Verify frozen V14 baseline
+        run: python tools/v14_source.py verify-lock --input index.html --lock src/source.lock.json
+
+      - name: Extract current runtime losslessly
+        run: python tools/v14_source.py extract --input index.html --out .v14-source-check --lock src/source.lock.json --force
+
+      - name: Check byte-for-byte round-trip
+        run: python tools/v14_source.py check --input index.html --source .v14-source-check --lock src/source.lock.json
