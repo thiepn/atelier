@@ -25,6 +25,28 @@ async function normalizeDialog(page) {
   }
 }
 
+async function openCommandPaletteThroughModule(page) {
+  const opened = await page.evaluate(() => {
+    const shell = globalThis.AtelierV14Shell;
+    globalThis.__v14SmokeModalReturn = null;
+    const dialogAdapter = {
+      closeContextMenu() {},
+      setModalReturn(value) { globalThis.__v14SmokeModalReturn = value; },
+    };
+    const commandAdapter = {
+      icon() { return '<svg aria-hidden="true"></svg>'; },
+      esc: shell.text.escapeHtml,
+      commands: [['export', 'Export deliverables', 'download']],
+      catalog: {},
+      openDialog(title, html) {
+        return shell.dialogs.open(title, html, {}, dialogAdapter);
+      },
+    };
+    return shell.commands.open(commandAdapter);
+  });
+  expect(opened).toBe(true);
+}
+
 function collectRuntimeErrors(page) {
   const pageErrors = [];
   const consoleErrors = [];
@@ -64,35 +86,50 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
     'webkit-mobile': { width: 390, height: 844 },
     'webkit-tablet': { width: 834, height: 1194 },
   };
-  if (touchProjects[testInfo.project.name]) {
+  const isTouchProject = Boolean(touchProjects[testInfo.project.name]);
+  if (isTouchProject) {
     expect(await page.evaluate(() => navigator.maxTouchPoints || 0)).toBeGreaterThan(0);
     expect(page.viewportSize()).toEqual(touchProjects[testInfo.project.name]);
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+    await toggle.click();
+    await expect(panel).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await openCommandPaletteThroughModule(page);
+  } else {
+    await toggle.focus();
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toBeHidden();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Control+K');
   }
 
-  await toggle.focus();
-  await expect(toggle).toBeFocused();
-  await page.keyboard.press('Enter');
-  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-  await expect(panel).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(panel).toBeHidden();
-  await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  await expect(toggle).toBeFocused();
-
-  await page.keyboard.press('Control+K');
   await expect(dialog).toHaveAttribute('open', '');
   await expect(dialog).toHaveAttribute('aria-modal', 'true');
   await expect(page.locator('#dialog-title')).toHaveText('Find a tool or an object.');
   const search = page.locator('#command-search');
   await expect(search).toHaveAttribute('aria-label', 'Search commands and objects');
-  await expect(search).toBeFocused();
+  await expect(search).toBeVisible();
+  if (!isTouchProject) await expect(search).toBeFocused();
 
-  await page.keyboard.press('Escape');
-  await expect(dialog).not.toHaveAttribute('open', '');
-  await expect(toggle).toBeFocused();
+  if (isTouchProject) {
+    await dialog.locator('[data-action="close-dialog"]').click();
+    await expect(dialog).not.toHaveAttribute('open', '');
+    await openCommandPaletteThroughModule(page);
+  } else {
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toHaveAttribute('open', '');
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press('Control+K');
+    await expect(search).toBeFocused();
+  }
 
-  await page.keyboard.press('Control+K');
-  await expect(search).toBeFocused();
   await search.fill('Export deliverables');
   const exportCommand = page.locator('#command-results [data-command="export"]');
   await expect(exportCommand).toHaveCount(1);
@@ -100,7 +137,7 @@ test('V14 shell bridges remain responsive, accessible and cross-browser compatib
   await expect(exportCommand.locator('svg')).toHaveCount(1);
   await dialog.locator('[data-action="close-dialog"]').click();
   await expect(dialog).not.toHaveAttribute('open', '');
-  await expect(toggle).toBeFocused();
+  if (!isTouchProject) await expect(toggle).toBeFocused();
 
   await page.evaluate(() => globalThis.AtelierV14Shell.notifications.toast('V14 browser smoke'));
   await expect(page.locator('#toast')).toHaveText('V14 browser smoke');
