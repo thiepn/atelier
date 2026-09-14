@@ -1,0 +1,79 @@
+name: V14 live HTTPS staging verification
+
+on:
+  push:
+    branches: [v14-development]
+    paths:
+      - '.github/workflows/v14-staging-live.yml'
+      - 'tools/v14_staging_package.py'
+      - 'acceptance/v14-rc-required-targets.json'
+      - 'src/v14/manifest.json'
+
+permissions:
+  contents: read
+
+jobs:
+  live-staging:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out production branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Verify production root is still frozen
+        run: |
+          test "$(sha256sum index.html | awk '{print $1}')" = '561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46'
+          test "$(sha256sum sw.js | awk '{print $1}')" = 'e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236'
+          test -f v14-rc-staging/staging-status.json
+          test -f v14-rc-staging/acceptance.html
+          test -f v14-rc-staging/app/index.html
+          echo 'V14_PRODUCTION_ROOT_IMMUTABLE=true'
+
+      - name: Verify live HTTPS staging and exact RC identity
+        run: |
+          STATUS='https://thiepn.github.io/atelier/v14-rc-staging/staging-status.json'
+          RUNNER='https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html'
+          APP='https://thiepn.github.io/atelier/v14-rc-staging/app/'
+          PROD='https://thiepn.github.io/atelier/'
+
+          for attempt in {1..40}; do
+            if curl --fail --silent --show-error --location "$STATUS" -o /tmp/live-status.json; then
+              LIVE_VERSION=$(python -c "import json;print(json.load(open('/tmp/live-status.json'))['version'])" 2>/dev/null || true)
+              if [ "$LIVE_VERSION" = '14.0.0-dev.17' ]; then break; fi
+            fi
+            sleep 3
+          done
+
+          curl --fail --silent --show-error --location "$STATUS" -o /tmp/live-status.json
+          curl --fail --silent --show-error --location "$RUNNER" -o /tmp/live-runner.html
+          curl --fail --silent --show-error --location "$APP" -o /tmp/live-index.html
+          curl --fail --silent --show-error --location "${APP}sw.js" -o /tmp/live-sw.js
+          curl --fail --silent --show-error --location "$PROD" -o /tmp/live-production-index.html
+          curl --fail --silent --show-error --location "${PROD}sw.js" -o /tmp/live-production-sw.js
+
+          python - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          def h(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+          live=json.load(open('/tmp/live-status.json',encoding='utf-8'))
+          repo=json.load(open('v14-rc-staging/staging-status.json',encoding='utf-8'))
+          assert live==repo
+          assert live['schema']=='atelier-v14-staging-status-v1'
+          assert live['version']=='14.0.0-dev.17'
+          assert live['candidateUrl']=='https://thiepn.github.io/atelier/v14-rc-staging/app/'
+          assert live['runnerUrl']=='https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html'
+          assert h('/tmp/live-index.html')==live['rcIndexSha256']
+          assert h('/tmp/live-sw.js')==live['rcServiceWorkerSha256']
+          assert h('/tmp/live-production-index.html')=='561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46'
+          assert h('/tmp/live-production-sw.js')=='e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236'
+          runner=Path('/tmp/live-runner.html').read_text('utf-8')
+          assert live['candidateUrl'] in runner
+          assert 'atelier-v14-rc-physical-acceptance-evidence-v2' in runner
+          assert 'verifyCandidate' in runner and 'identityVerified' in runner
+          assert live['productionEligible'] is False
+          print('V14_LIVE_HTTPS_STAGING_OK=true')
+          print('V14_LIVE_RC_IDENTITY_OK=true version='+live['version'])
+          print('V14_LIVE_PRODUCTION_ROOT_IMMUTABLE=true')
+          print('V14_REAL_PHYSICAL_EVIDENCE=0/5')
+          PY
