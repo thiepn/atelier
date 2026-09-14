@@ -98,20 +98,17 @@ jobs:
           assert plan['schema']=='atelier-v14-rc-acceptance-plan-v3'
           assert plan['evidenceSchema']=='atelier-v14-rc-physical-acceptance-evidence-v3'
           assert plan['physicalSignoffSchema']=='atelier-v14-rc-physical-signoff-v3'
-          dep=plan['candidateDeployment']
-          expected_base=f'https://thiepn.github.io/atelier/v14-rc-staging/{version}/'
+          dep=plan['candidateDeployment'];expected_base=f'https://thiepn.github.io/atelier/v14-rc-staging/{version}/'
           assert dep['url']==expected_base+'app/'
           assert dep['runnerUrl']==expected_base+f'acceptance.html?v={version}'
           assert dep['statusUrl']==expected_base+'staging-status.json'
           assert dep['productionUrl']=='https://thiepn.github.io/atelier/'
-          assert dep['versionedPathRequired'] is True and dep['preservePriorCandidates'] is True
-          assert dep['runnerCacheBustRequired'] is True
+          assert dep['versionedPathRequired'] is True and dep['preservePriorCandidates'] is True and dep['runnerCacheBustRequired'] is True
           assert urlparse(dep['url']).scheme=='https' and dep['url']!=dep['productionUrl']
           assert parse_qs(urlparse(dep['runnerUrl']).query)=={'v':[version]}
-          targets=plan['targets']
-          assert len(targets)==5 and len({t['id'] for t in targets})==5
+          targets=plan['targets'];assert len(targets)==5 and len({t['id'] for t in targets})==5
           assert all('rc-identity' in t['requiredTests'] and 'no-dev-diagnostics' in t['requiredTests'] and 'cache-isolation' in t['requiredTests'] for t in targets)
-          freeze=inventory['policy']['stabilization']; staging=freeze['staging']; worker=freeze['serviceWorker']
+          freeze=inventory['policy']['stabilization'];staging=freeze['staging'];worker=freeze['serviceWorker']
           assert inventory['version']==version
           assert freeze['architectureFrozen'] is True and freeze['allowProductionCutover'] is False
           assert worker['ownCacheLookupOnly'] is True and worker['crossNamespaceReadsForbidden'] is True
@@ -122,7 +119,7 @@ jobs:
           assert cutover['schema']=='atelier-v14-rc-cutover-plan-v2'
           assert cutover['staging']['status']=='live-https-verified'
           assert cutover['currentState']['productionCutover']=='blocked'
-          print('V14_DEV18_POLICY_OK=true targets=5 immutable_staging=true own_cache_only=true')
+          print('V14_DEV18_POLICY_OK=true targets=5 immutable_staging=true own_cache_only=true promotion_fail_closed=true')
           PY
 
       - name: Run shell/helper behavior tests
@@ -163,32 +160,28 @@ jobs:
           staging=json.loads((root/'staging-status.json').read_text('utf-8'))
           assert source['version']==inventory['version']==dev['version']==rc['version']==staging['version']==version
           assert dev['developmentOnly'] is True
-          assert dev['serviceWorker']['ownCacheLookupOnly'] is True
-          assert dev['serviceWorker']['cacheLookupIsolationReplacements']==3
+          assert dev['serviceWorker']['ownCacheLookupOnly'] is True and dev['serviceWorker']['cacheLookupIsolationReplacements']==3
           assert 'caches.match(' not in Path('v14-dist/sw.js').read_text('utf-8')
-          assert rc['artifactKind']=='release-candidate' and rc['diagnosticsStripped'] is True
-          assert rc['ownCacheLookupOnly'] is True and rc['productionEligible'] is False
-          assert rc_build['serviceWorker']['ownCacheLookupOnly'] is True
+          assert rc['artifactKind']=='release-candidate' and rc['diagnosticsStripped'] is True and rc['ownCacheLookupOnly'] is True
+          assert rc['productionEligible'] is False and rc_build['serviceWorker']['ownCacheLookupOnly'] is True
           assert 'caches.match(' not in Path('v14-rc/sw.js').read_text('utf-8')
           assert rc['cache']==f'atelier-v14-rc-{version}'
+          gate=rc['certificationGate']
+          assert gate['priorReleaseGateReady'] is False and gate['promotionEligible'] is False
+          assert gate['priorReleaseBlockers']==['prior-final-signoff-not-pass','runtime-advance-not-authorized','physical-evidence-incomplete']
+          assert gate['blockers']==['prior-final-signoff-not-pass','runtime-advance-not-authorized','physical-evidence-incomplete','v14-physical-signoff-required','v14-cutover-verification-required']
           assert staging['schema']=='atelier-v14-staging-status-v2'
           assert staging['candidatePath']==f'v14-rc-staging/{version}/'
-          assert staging['candidateUrl']==plan['candidateDeployment']['url']
-          assert staging['runnerUrl']==plan['candidateDeployment']['runnerUrl']
-          assert staging['statusUrl']==plan['candidateDeployment']['statusUrl']
-          assert staging['immutableCandidatePath'] is True and staging['priorCandidatesPreserved'] is True
-          assert staging['ownCacheLookupOnly'] is True
+          assert staging['candidateUrl']==plan['candidateDeployment']['url'] and staging['runnerUrl']==plan['candidateDeployment']['runnerUrl'] and staging['statusUrl']==plan['candidateDeployment']['statusUrl']
+          assert staging['immutableCandidatePath'] is True and staging['priorCandidatesPreserved'] is True and staging['ownCacheLookupOnly'] is True
           assert staging['sourceRevision']==os.environ['GITHUB_SHA']
           assert staging['rcIndexSha256']==rc['indexSha256'] and staging['rcServiceWorkerSha256']==rc['serviceWorkerSha256']
           def h(path): return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-          assert h(root/'app/index.html')==rc['indexSha256']
-          assert h(root/'app/sw.js')==rc['serviceWorkerSha256']
+          assert h(root/'app/index.html')==rc['indexSha256'] and h(root/'app/sw.js')==rc['serviceWorkerSha256']
           runner=(root/'acceptance.html').read_text('utf-8')
-          assert plan['evidenceSchema'] in runner and plan['candidateDeployment']['url'] in runner
-          assert plan['candidateDeployment']['statusUrl'] in runner
+          assert plan['evidenceSchema'] in runner and plan['candidateDeployment']['url'] in runner and plan['candidateDeployment']['statusUrl'] in runner
           assert 'arrayBuffer()' in runner and 'rcStatusVerified' in runner and 'identityVerified' in runner
-          assert rc['certificationGate']['blockers']==['prior-final-signoff-not-pass','runtime-advance-not-authorized','physical-evidence-incomplete']
-          print('V14_DEV18_IDENTITY_OK=true staging_exact_rc=true evidence=0/5')
+          print('V14_DEV18_IDENTITY_OK=true staging_exact_rc=true evidence=0/5 promotion=false')
           PY
           node --check v14-dist/sw.js
           node --check v14-rc/sw.js
@@ -196,14 +189,14 @@ jobs:
       - name: Self-test strict V14 RC evidence validator
         run: python acceptance/validate_v14_rc_acceptance.py --rc-status v14-rc/v14-rc-status.json --self-test
 
-      - name: Verify promotion gate fails closed
+      - name: Verify production promotion gate fails closed
         run: |
           set +e
           python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc-promotion-check --force --require-production-eligible
           code=$?
           set -e
           test "$code" -ne 0
-          echo 'V14_RC_FAIL_CLOSED_OK=true'
+          echo 'V14_RC_PRODUCTION_PROMOTION_FAIL_CLOSED_OK=true'
 
       - name: Install Playwright browser matrix
         run: |
@@ -235,10 +228,10 @@ jobs:
           const { chromium }=require('@playwright/test');
           (async()=>{const browser=await chromium.launch({headless:true}),context=await browser.newContext(),page=await context.newPage();
           await page.goto(process.env.V14_SMOKE_URL,{waitUntil:'networkidle'});const rc=await page.evaluate(async()=>fetch('./v14-rc-status.json',{cache:'no-store'}).then(r=>r.json()));
-          await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.units));if(await page.locator('#atelier-v14-devtools').count())throw Error('RC diagnostics present');if(rc.ownCacheLookupOnly!==true)throw Error('RC cache isolation metadata missing');
+          await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.units));if(await page.locator('#atelier-v14-devtools').count())throw Error('RC diagnostics present');if(rc.ownCacheLookupOnly!==true||rc.productionEligible!==false)throw Error('RC fail-closed metadata missing');
           await page.evaluate(async()=>navigator.serviceWorker.ready);if(!await page.evaluate(()=>Boolean(navigator.serviceWorker.controller)))await page.reload({waitUntil:'networkidle'});await page.waitForFunction(()=>Boolean(navigator.serviceWorker?.controller));
           const s=await page.evaluate(()=>new Promise((resolve,reject)=>{const c=navigator.serviceWorker.controller,ch=new MessageChannel(),t=setTimeout(()=>reject(Error('timeout')),5000);ch.port1.onmessage=e=>{clearTimeout(t);resolve(e.data)};c.postMessage({type:'GET_STATUS'},[ch.port2])}));if(s.version!==rc.version||s.cache!==rc.cache||!s.ready)throw Error('RC worker identity mismatch');
-          await context.setOffline(true);await page.reload({waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.units));if(!await page.locator('#app').isVisible())throw Error('RC offline shell missing');await context.setOffline(false);await browser.close();console.log('V14_RC_BROWSER_OK=true own_cache_only=true');})().catch(e=>{console.error(e);process.exit(1)});
+          await context.setOffline(true);await page.reload({waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>Boolean(globalThis.AtelierV14Shell?.units));if(!await page.locator('#app').isVisible())throw Error('RC offline shell missing');await context.setOffline(false);await browser.close();console.log('V14_RC_BROWSER_OK=true own_cache_only=true production_eligible=false');})().catch(e=>{console.error(e);process.exit(1)});
           NODE
 
       - name: Run physical evidence runner browser smoke
@@ -264,10 +257,8 @@ jobs:
           status=v.load_rc_status('v14-rc/v14-rc-status.json')
           tid,data,errors=v.validate_file('/tmp/v14-staging-evidence.json',status)
           assert tid=='firefox-desktop' and not errors, errors
-          assert data['candidateUrl']==v.DEPLOYMENT['url']
-          assert data['runnerUrl']==v.DEPLOYMENT['runnerUrl']
-          assert data['stagingStatusUrl']==v.DEPLOYMENT['statusUrl']
-          print('V14_PHYSICAL_RUNNER_VALIDATOR_COMPATIBLE=true schema=v3')
+          assert data['candidateUrl']==v.DEPLOYMENT['url'] and data['runnerUrl']==v.DEPLOYMENT['runnerUrl'] and data['stagingStatusUrl']==v.DEPLOYMENT['statusUrl']
+          print('V14_PHYSICAL_RUNNER_VALIDATOR_COMPATIBLE=true schema=v3 production_promotion_ready=false')
           PY
 
       - name: Resolve artifact names
@@ -344,12 +335,10 @@ jobs:
           python - "$SOURCE/staging-status.json" "$VERSION" <<'PY'
           import json,sys
           status=json.load(open(sys.argv[1],encoding='utf-8'));version=sys.argv[2]
-          assert status['schema']=='atelier-v14-staging-status-v2'
-          assert status['version']==version
+          assert status['schema']=='atelier-v14-staging-status-v2' and status['version']==version
           assert status['candidatePath']==f'v14-rc-staging/{version}/'
-          assert status['immutableCandidatePath'] is True
-          assert status['priorCandidatesPreserved'] is True
-          assert status['ownCacheLookupOnly'] is True
+          assert status['immutableCandidatePath'] is True and status['priorCandidatesPreserved'] is True and status['ownCacheLookupOnly'] is True
+          assert status['productionEligible'] is False
           PY
           mkdir -p production-site/v14-rc-staging
           if [ -e "$DEST" ]; then
@@ -407,16 +396,16 @@ jobs:
           assert live==local
           assert live['schema']=='atelier-v14-staging-status-v2'
           assert live['immutableCandidatePath'] is True and live['priorCandidatesPreserved'] is True and live['ownCacheLookupOnly'] is True
-          assert h('/tmp/live-index.html')==live['rcIndexSha256']
-          assert h('/tmp/live-sw.js')==live['rcServiceWorkerSha256']
+          assert live['productionEligible'] is False
+          assert h('/tmp/live-index.html')==live['rcIndexSha256'] and h('/tmp/live-sw.js')==live['rcServiceWorkerSha256']
           assert h('/tmp/live-production-index.html')=='561d258b10835af1a8dc6719ce411cd05eff53e31713bc73fb733169649cfc46'
           assert h('/tmp/live-production-sw.js')=='e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236'
           runner=Path('/tmp/live-runner.html').read_text('utf-8')
           assert live['candidateUrl'] in runner and live['statusUrl'] in runner
-          assert 'atelier-v14-rc-physical-acceptance-evidence-v3' in runner
-          assert 'arrayBuffer()' in runner and 'rcStatusVerified' in runner
+          assert 'atelier-v14-rc-physical-acceptance-evidence-v3' in runner and 'arrayBuffer()' in runner and 'rcStatusVerified' in runner
           print('V14_LIVE_HTTPS_STAGING_OK=true immutable=true')
           print('V14_LIVE_RC_IDENTITY_OK=true version='+live['version'])
           print('V14_LIVE_PRODUCTION_ROOT_IMMUTABLE=true')
           print('V14_REAL_PHYSICAL_EVIDENCE=0/5')
+          print('V14_PRODUCTION_PROMOTION_READY=false')
           PY
