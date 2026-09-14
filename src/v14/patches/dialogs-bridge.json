@@ -1,0 +1,25 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-dialogs-bridge",
+  "description": "Delegate modal opening, closing and confirmation-dialog composition to the V14 dialog service while preserving exact legacy fallback behavior and IIFE-owned state through explicit adapters.",
+  "changes": [
+    {
+      "id": "open-dialog-bridge",
+      "expectedOccurrences": 1,
+      "find": "function openDialog(title,html,{wide=false,kicker='ATELIER SPACE STUDIO'}={}){closeContextMenu();modalReturn=document.activeElement;const d=$('#dialog');$('#dialog-title').textContent=title;$('#dialog-kicker').textContent=kicker;$('#dialog-content').innerHTML=html;d.classList.toggle('wide',wide);d.setAttribute('aria-modal','true');if(!d.open)d.showModal();requestAnimationFrame(()=>{const preferred=d.querySelector('[autofocus],#command-search,input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled]),.dialog-content button:not([disabled])');preferred?.focus?.({preventScroll:true});});}",
+      "replace": "function openDialog(title,html,{wide=false,kicker='ATELIER SPACE STUDIO'}={}){const service=globalThis.AtelierV14Shell?.dialogs;if(service?.open&&service.open(title,html,{wide,kicker},{closeContextMenu,setModalReturn:value=>{modalReturn=value;}})!==false)return;closeContextMenu();modalReturn=document.activeElement;const d=$('#dialog');$('#dialog-title').textContent=title;$('#dialog-kicker').textContent=kicker;$('#dialog-content').innerHTML=html;d.classList.toggle('wide',wide);d.setAttribute('aria-modal','true');if(!d.open)d.showModal();requestAnimationFrame(()=>{const preferred=d.querySelector('[autofocus],#command-search,input:not([type=hidden]):not([disabled]),select:not([disabled]),textarea:not([disabled]),.dialog-content button:not([disabled])');preferred?.focus?.({preventScroll:true});});}"
+    },
+    {
+      "id": "close-dialog-bridge",
+      "expectedOccurrences": 1,
+      "find": "function closeDialog(){if(exportBusy)return;const d=$('#dialog');if(d.open)d.close();confirmCallback=null;const target=modalReturn;modalReturn=null;requestAnimationFrame(()=>target?.focus?.({preventScroll:true}));}",
+      "replace": "function closeDialog(){if(exportBusy)return;const service=globalThis.AtelierV14Shell?.dialogs;if(service?.close&&service.close({getModalReturn:()=>modalReturn,setModalReturn:value=>{modalReturn=value;},clearConfirmCallback:()=>{confirmCallback=null;}})!==false)return;const d=$('#dialog');if(d.open)d.close();confirmCallback=null;const target=modalReturn;modalReturn=null;requestAnimationFrame(()=>target?.focus?.({preventScroll:true}));}"
+    },
+    {
+      "id": "confirm-action-bridge",
+      "expectedOccurrences": 1,
+      "find": "function confirmAction(title,message,callback,label='Continue'){confirmCallback=callback;openDialog(title,`<p class=\"dialog-intro\">${esc(message)}</p><div class=\"dialog-actions\"><button class=\"btn\" data-action=\"close-dialog\">Cancel</button><button class=\"btn primary\" data-action=\"confirm\">${esc(label)}</button></div>`);}",
+      "replace": "function confirmAction(title,message,callback,label='Continue'){const service=globalThis.AtelierV14Shell?.dialogs;if(service?.confirm&&service.confirm(title,message,callback,label,{setConfirmCallback:value=>{confirmCallback=value;},openDialog,esc})!==false)return;confirmCallback=callback;openDialog(title,`<p class=\"dialog-intro\">${esc(message)}</p><div class=\"dialog-actions\"><button class=\"btn\" data-action=\"close-dialog\">Cancel</button><button class=\"btn primary\" data-action=\"confirm\">${esc(label)}</button></div>`);}"
+    }
+  ]
+}
