@@ -45,6 +45,7 @@ async function openCommandPaletteThroughModule(page) {
     return shell.commands.open(commandAdapter);
   });
   expect(opened).toBe(true);
+  return opened;
 }
 
 async function tapCenter(page, locator) {
