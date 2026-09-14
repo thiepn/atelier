@@ -35,6 +35,12 @@ jobs:
       - name: Run V14 overlay-build unit tests
         run: PYTHONPATH=tools python -m unittest -v tools/test_v14_build.py
 
+      - name: Run V14 migration-inventory policy tests
+        run: PYTHONPATH=tools python -m unittest -v tools/test_v14_migration_inventory.py
+
+      - name: Validate V14 migration inventory
+        run: python tools/v14_migration_inventory.py --inventory src/v14/migration-inventory.json
+
       - name: Check V14 module and browser-test JavaScript syntax
         run: |
           node --check src/v14/shell/notifications.js
@@ -85,10 +91,11 @@ jobs:
           from pathlib import Path, PurePosixPath
           root = Path('v14-dist')
           source = json.loads(Path('src/v14/manifest.json').read_text('utf-8'))
+          inventory = json.loads(Path('src/v14/migration-inventory.json').read_text('utf-8'))
           built = json.loads((root / 'v14-build-manifest.json').read_text('utf-8'))
           html = (root / 'index.html').read_text('utf-8')
           assert built['schema'] == 'atelier-v14-development-build-v1'
-          assert built['version'] == source['version']
+          assert built['version'] == source['version'] == inventory['version']
           assert built['developmentOnly'] is True
           assert built['baseline']['runtimeRelease'] == '13.2.0'
           assert built['styles'] == source.get('styles', [])
@@ -105,7 +112,12 @@ jobs:
             assert (root / 'v14' / Path(*PurePosixPath(path).parts)).is_file()
           for bridge in ('AtelierV14Shell?.notifications?.announce', 'AtelierV14Shell?.dialogs', 'AtelierV14Shell?.commands', 'AtelierV14Shell?.files', 'AtelierV14Shell?.icons', 'AtelierV14Shell?.text'):
             assert bridge in html
+          selected = [b for b in inventory['boundaries'] if b['decision'] == 'selected-next']
+          assert len(selected) == 1
+          assert selected[0]['id'] == 'dimension-formatting'
+          assert selected[0]['targetMilestone'] == '14.0.0-dev.12'
           print('V14_ARTIFACT_STRUCTURE_OK=true version='+built['version'])
+          print('V14_NEXT_MIGRATION='+selected[0]['id'])
           PY
 
       - name: Install Playwright browser matrix
