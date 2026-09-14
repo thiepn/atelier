@@ -4,7 +4,7 @@
 
 **FINAL PRODUCTION SIGN-OFF: BLOCKED — 0/5 PHYSICAL TARGETS**
 
-V13.3.1 completes the evidence ingestion and final-signoff machinery. It does not fabricate or infer physical-device acceptance. The production application runtime remains byte-frozen at Atelier 13.2.0.
+V13.3.1 completes the evidence collection, ingestion, and final-signoff machinery. It does not fabricate or infer physical-device acceptance. The production application runtime remains byte-frozen at Atelier 13.2.0.
 
 ## Frozen runtime identity
 
@@ -17,9 +17,12 @@ V13.3.1 completes the evidence ingestion and final-signoff machinery. It does no
 
 ## V13.3.1 completion layer
 
+- `acceptance/DEVICE_ACCEPTANCE_13.3.1.html` is the recommended resumable entry point for physical testing.
+- The resumable runner wraps the unchanged `DEVICE_ACCEPTANCE_13.3.0.html` evidence generator, preserving the accepted evidence schema and fingerprint semantics.
+- Per-target checklist drafts are stored locally on the testing device; restored drafts deliberately require fresh attestation before export.
 - `acceptance/SIGNOFF_CENTER_13.3.1.html` imports all evidence files locally in the browser.
-- Existing V13.3.0 evidence remains valid; testers do not have to repeat tests merely because the aggregation tooling moved to V13.3.1.
-- `acceptance/validate_acceptance.py` now supports final sign-off generation and validation reports.
+- Existing V13.3.0 evidence remains valid; testers do not have to repeat tests merely because the completion tooling moved to V13.3.1.
+- `acceptance/validate_acceptance.py` supports final sign-off generation and validation reports.
 - Each accepted evidence file is bound into the final manifest by both its raw file SHA-256 and its internal evidence fingerprint.
 - Duplicate target files, tampered evidence, wrong production hashes, missing attestation, missing tester identity, or any non-PASS required result block final sign-off.
 - The final sign-off JSON is generated only when all five distinct physical targets are valid.
