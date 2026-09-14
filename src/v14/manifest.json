@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-module-manifest-v1",
-  "version": "14.0.0-dev.17",
+  "version": "14.0.0-dev.18",
   "styles": [
     "dev-status/dev-status.css"
   ],
@@ -34,6 +34,7 @@
     "output": "sw.js",
     "expectedSourceSha256": "e8767e445516647851fe5053a3b5c9dd140e0c04ecc719fbfe5eb801094f5236",
     "baselineCachePrefix": "atelier-space-studio-",
-    "cachePrefix": "atelier-v14-dev-"
+    "cachePrefix": "atelier-v14-dev-",
+    "ownCacheLookupOnly": true
   }
 }
