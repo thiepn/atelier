@@ -65,7 +65,7 @@ def build_runner(template: str, plan: dict, rc: dict) -> str:
         'targets': targets,
     }
     config_js = 'const CONFIG=' + json.dumps(config, separators=(',', ':')) + ';\nconst DEFINITIONS={'
-    runner = CONFIG_RE.sub(config_js, template, count=1)
+    runner = CONFIG_RE.sub(lambda _: config_js, template, count=1)
     if runner == template:
         raise ValueError('Unable to replace acceptance CONFIG block')
 
@@ -78,7 +78,7 @@ def build_runner(template: str, plan: dict, rc: dict) -> str:
     runner = runner.replace("const DEFINITIONS={", "const DEFINITIONS={\n 'rc-identity':['RC identity','Confirm the staged RC identity matches this runner and the automatic index/service-worker hash check passes.'],\n 'no-dev-diagnostics':['No development diagnostics','Confirm the V14 DEV diagnostics surface is absent.'],\n 'cache-isolation':['Cache isolation','Confirm the staged app uses the V14 RC cache/worker scope and production remains independently usable.'],")
 
     update_gate = "function updateGate(){const r=results(),complete=r.length&&r.every(x=>x.status==='PASS'),att=document.getElementById('attest').checked,tester=document.getElementById('tester').value.trim(),device=document.getElementById('device').value.trim(),os=document.getElementById('os').value.trim(),browser=document.getElementById('browser').value.trim();const ok=identityOK&&complete&&att&&tester&&device&&os&&browser;const gate=document.getElementById('gate');gate.textContent=ok?'EVIDENCE READY':'EVIDENCE BLOCKED';gate.className='status '+(ok?'ready':'blocked');document.getElementById('summary').textContent=`${r.filter(x=>x.status==='PASS').length}/${r.length} required checks PASS · identity ${identityOK?'verified':'not verified'}${att?' · attested':''}`;return ok;}"
-    runner, count = UPDATE_GATE_RE.subn(update_gate, runner, count=1)
+    runner, count = UPDATE_GATE_RE.subn(lambda _: update_gate, runner, count=1)
     if count != 1:
         raise ValueError('Unable to replace acceptance gate')
 
@@ -87,7 +87,7 @@ def build_runner(template: str, plan: dict, rc: dict) -> str:
     runner = runner.replace("document.getElementById('refresh').onclick=showEnv;", "document.getElementById('refresh').onclick=verifyCandidate;")
 
     export_handler = "document.getElementById('export').onclick=async()=>{if(!updateGate()){alert('Identity must verify, all required checks must PASS, device/tester fields must be filled, and attestation must be checked.');return;}const t=CONFIG.targets.find(x=>x.id===targetEl.value);const payload={schema:CONFIG.evidenceSchema,acceptanceMilestone:CONFIG.milestone,rcVersion:CONFIG.rcVersion,rcIndexSha256:CONFIG.indexSha256,rcServiceWorkerSha256:CONFIG.swSha256,rcCache:CONFIG.cache,candidateOrigin:CONFIG.candidateOrigin,candidateUrl:CONFIG.candidateUrl,runnerUrl:CONFIG.runnerUrl,target:{id:t.id,label:t.label},tester:document.getElementById('tester').value.trim(),deviceModel:document.getElementById('device').value.trim(),osVersion:document.getElementById('os').value.trim(),browserVersion:document.getElementById('browser').value.trim(),environment:env(),results:results(),generalNotes:document.getElementById('generalNotes').value.trim(),attested:true};const out={...payload,evidenceFingerprint:await fingerprint(payload)};const blob=new Blob([JSON.stringify(out,null,2)+'\\n'],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`ATELIER-V14-RC-${t.id}-${new Date().toISOString().slice(0,10)}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);};\ndocument.getElementById('reset')"
-    runner, count = EXPORT_RE.subn(export_handler, runner, count=1)
+    runner, count = EXPORT_RE.subn(lambda _: export_handler, runner, count=1)
     if count != 1:
         raise ValueError('Unable to replace evidence exporter')
     runner = runner.replace('renderTests();\n</script>', 'renderTests();verifyCandidate();\n</script>')
