@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.11",
+  "version": "14.0.0-dev.12",
   "policy": {
     "excludedByDefault": [
       "project-persistence",
@@ -8,6 +8,7 @@
       "geometry",
       "rendering"
     ],
+    "selectionRequired": false,
     "selectionRules": {
       "requiredStateRisk": "low",
       "requiredTestability": "high",
@@ -27,9 +28,9 @@
       "browserCoupling": "none",
       "testability": "high",
       "userPayoff": "medium",
-      "decision": "selected-next",
+      "decision": "completed",
       "targetMilestone": "14.0.0-dev.12",
-      "rationale": "Pure deterministic unit formatting with no project mutation, DOM dependency, persistence ownership or renderer state. It can be bridged independently while preserving the existing fallback."
+      "rationale": "Pure deterministic unit formatting has been migrated behind an exact fallback bridge in dev.12. The legacy helper body remains available if the V14 units service is unavailable."
     },
     {
       "id": "icon-registry-data",
