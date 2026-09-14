@@ -14,9 +14,9 @@ The V13 architecture described a deterministic `src/` + `tools/` development mod
 - `tools/v14_source.py` — losslessly extracts inline HTML/CSS/JS/data segments and rebuilds them byte-for-byte.
 - `tools/test_v14_source.py` — regression tests for round-trip integrity, external-script handling, tamper rejection and runtime-lock enforcement.
 - `src/generated/` — reproducible local source snapshot generated from the current runtime; not required to be committed.
-- `src/v14/` — home for new or migrated V14 modules in later milestones.
+- `src/v14/` — home for new or migrated V14 modules.
 
-### Invariants
+### Milestone 1 invariants
 
 1. V14 work does not mutate the certified/frozen production artifacts on `main`.
 2. A source extraction followed by a build must reproduce `index.html` exactly.
@@ -25,28 +25,49 @@ The V13 architecture described a deterministic `src/` + `tools/` development mod
 5. Existing code migrates incrementally; there is no big-bang rewrite.
 6. V14 development status must never be presented as V13.3.1 production certification.
 
-## Development flow
+## Milestone 2 — Deterministic module overlay
+
+V14 now has a second build layer that can add modular development code without editing the locked baseline.
+
+### Components
+
+- `src/v14/manifest.json` — ordered V14 styles, JavaScript modules and passthrough assets.
+- `tools/v14_build.py` — verifies the baseline lock, validates module paths, injects V14 assets at deterministic HTML anchors and emits a separate development artifact.
+- `tools/test_v14_build.py` — regression tests for deterministic output, unsafe paths, duplicate markers, lock mismatches and output replacement rules.
+- `src/v14/dev-status/` — first isolated module, used to prove the module boundary without touching project state.
+- `.github/workflows/v14-source-roundtrip.yml` — verifies both the lossless source boundary and the real V14 development artifact in CI.
+
+### Build flow
 
 ```text
-index.html (13.2.0 baseline)
+index.html (locked 13.2.0 baseline)
         │
-        ├── verify source.lock.json
+        ├── source.lock verification
         │
-        ▼
-tools/v14_source.py extract
-        │
-        ▼
-src/generated/manifest.json + lossless segments
-        │
-        ├── V14 incremental migration / modules
+        ├── lossless source round-trip tests
         │
         ▼
-deterministic build
+tools/v14_build.py + src/v14/manifest.json
+        │
+        ├── validate module paths/assets
+        ├── inject styles before </head>
+        ├── inject modules before </body>
+        ├── preserve declared runtime assets
         │
         ▼
-V14 development artifact
+separate V14 development artifact
+        │
+        └── v14-build-manifest.json with hashes
 ```
+
+The root `index.html` is not rewritten by the V14 overlay builder.
+
+### Development diagnostics module
+
+The first module is intentionally low risk. It displays network state, display mode, service-worker control state, touch-point count, viewport information and the 13.2.0 baseline identity. It is namespaced under `atelier-v14-devtools`, keyboard accessible, and explicitly labels itself as development-only.
+
+It does not read or mutate project data, persistence, backups, geometry, catalog state or the renderer.
 
 ## Next V14 milestone
 
-Milestone 2 should introduce the first real `src/v14/` module boundary and deterministic injection/build step, then migrate one low-risk subsystem out of the monolith. Candidate selection should prioritize isolated UI/application-shell code with strong regression coverage rather than core project persistence or geometry first.
+Milestone 3 should use the now-tested module boundary for the first **real application-shell extraction or replacement**. Candidate code must be low-risk, independently testable and outside core project persistence/geometry. The preferred next target is a shell-level interaction such as command/help infrastructure, non-project notifications/status handling, or another isolated application-shell service that can be introduced alongside the legacy implementation before cutover.
