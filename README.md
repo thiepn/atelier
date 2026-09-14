@@ -1,6 +1,6 @@
 # Atelier Space Studio
 
-> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.7** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
+> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.8** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
 
 Atelier is a local-first browser space-planning studio with a static PWA deployment.
 
@@ -38,6 +38,11 @@ Completed development milestones:
    - legacy keyboard/action paths exercised through V14 bridges;
    - uncaught page/console error gate;
    - manifest-driven, concurrency-safe CI.
+8. **14.0.0-dev.8 — Cross-browser, responsive & offline integration gate**
+   - Chromium desktop, Chromium mobile/touch, Firefox and WebKit integration matrix;
+   - responsive horizontal-overflow gate;
+   - keyboard/Escape/focus-restoration and shell accessibility checks;
+   - controlled service-worker offline reload of the generated V14 artifact.
 
 Build the current development artifact with:
 
@@ -49,7 +54,7 @@ Architecture: `ARCHITECTURE_V14.md`
 
 ### Current V14 validation
 
-Dev.7 passes:
+Dev.8 passes:
 
 - source and overlay unit tests;
 - independent behavior tests for all four shell services;
@@ -57,10 +62,15 @@ Dev.7 passes:
 - byte-for-byte source round-trip;
 - exact bridge verification;
 - generated artifact structure checks;
-- Chromium integration smoke against the generated artifact;
-- artifact upload.
+- Chromium desktop shell integration;
+- Chromium 390×844 mobile/touch shell integration;
+- Firefox desktop shell integration;
+- WebKit desktop shell integration;
+- responsive overflow, dialog focus/Escape and accessibility assertions;
+- controlled Chromium offline/PWA reload with the V14 overlay restored from cache;
+- artifact upload pipeline.
 
-Latest validated artifact: `atelier-v14-dev.7` from workflow run `34794583346`.
+Validated workflow run: `34815078492`.
 
 ## Production status
 
@@ -110,6 +120,7 @@ V14 development may continue on its isolated branch, but **V14 must not be promo
 - `RELEASE_NOTES_14.0.0-dev.5.md`
 - `RELEASE_NOTES_14.0.0-dev.6.md`
 - `RELEASE_NOTES_14.0.0-dev.7.md`
+- `RELEASE_NOTES_14.0.0-dev.8.md`
 - `TEST_REPORT_13.2.0.md`
 - `TEST_REPORT_13.3.1.md`
 - `TEST_REPORT_14.0.0-dev.3.md`
@@ -117,4 +128,5 @@ V14 development may continue on its isolated branch, but **V14 must not be promo
 - `TEST_REPORT_14.0.0-dev.5.md`
 - `TEST_REPORT_14.0.0-dev.6.md`
 - `TEST_REPORT_14.0.0-dev.7.md`
+- `TEST_REPORT_14.0.0-dev.8.md`
 - `CERTIFICATION_MATRIX_13.3.1.json`
