@@ -2,7 +2,7 @@
 
 ## Status
 
-V14 is an **uncertified development cycle** on branch `v14-development`. The current validated checkpoint is **14.0.0-dev.10**. Production remains Atelier 13.2.0 on `main`; V13.3.1 physical-device sign-off is a separate unresolved production gate and is not implied by V14 development.
+V14 is an **uncertified development cycle** on branch `v14-development`. The current validated checkpoint is **14.0.0-dev.12**. Production remains Atelier 13.2.0 on `main`; V13.3.1 physical-device sign-off is a separate unresolved production gate and is not implied by V14 development.
 
 ## Core architecture rule
 
@@ -180,6 +180,57 @@ Dev.10 validation includes isolated text behavior, all four exact occurrence che
 
 Validated workflow: `34816085941`.
 
+## Milestone 11 — Migration & dependency inventory
+
+`14.0.0-dev.11` stopped automatic helper extraction and introduced a machine-validated boundary inventory.
+
+Components:
+
+- `src/v14/migration-inventory.json` — ownership/risk/testability decisions for the remaining legacy boundaries;
+- `tools/v14_migration_inventory.py` — fail-closed policy validator;
+- `tools/test_v14_migration_inventory.py` — regression tests for duplicate IDs, excluded ownership, selection cardinality and mutation constraints;
+- CI synchronization between inventory version, module-manifest version and generated-artifact version.
+
+Selection policy requires an authorized migration to be low state risk, non-mutating, highly testable, at most low browser coupling and compatible with an explicit legacy fallback.
+
+The inventory blocks persistence, project schema, geometry and rendering from opportunistic extraction. It selected only `dimension-formatting` for dev.12.
+
+Validated workflow: `34816530041`.
+
+## Milestone 12 — Dimension formatting boundary
+
+`14.0.0-dev.12` implements the only migration authorized by dev.11.
+
+`src/v14/shell/units.js` owns deterministic display formatting previously provided by legacy `fmtDim`.
+
+Preserved formats:
+
+- `m` — two decimals;
+- `ft` — two decimals;
+- `cm` — two decimals;
+- `mm` — integer display;
+- `in` — two decimals;
+- `ft-in` — nearest one-eighth inch using the existing prime notation;
+- unknown unit strings — factor fallback `1` and supplied suffix preserved.
+
+`src/v14/patches/units-bridge.json` replaces only the unique `fmtDim` function prefix. The complete original formatter body remains immediately after the V14 delegation as fallback.
+
+The migration does **not** move or alter:
+
+- project unit state;
+- stored numeric values;
+- numeric editing/conversion;
+- geometry;
+- project schema;
+- persistence;
+- plan/3D renderer ownership.
+
+Validation includes isolated formatter behavior, exact bridge occurrence, all four browser projects, direct metric/imperial browser probes and a controlled offline reload that requires the units service to register and execute from the cached development artifact.
+
+After successful dev.12 validation, the inventory marks `dimension-formatting` completed, sets `selectionRequired: false`, and contains no `selected-next` boundary. This is an explicit extraction stop rather than an invitation to choose another helper implicitly.
+
+Validated workflow: `34871518856`.
+
 ## Development diagnostics
 
 `src/v14/dev-status/` displays network state, display mode, service-worker controller state, touch-point count, viewport information and the 13.2.0 baseline identity. It is namespaced, keyboard accessible and explicitly development-only.
@@ -188,14 +239,15 @@ It does not read or mutate project data, persistence, backups, geometry, catalog
 
 ## Current modular ownership boundary
 
-As of dev.10, V14 owns post-bootstrap generic shell/helper behavior for:
+As of dev.12, V14 owns post-bootstrap generic shell/helper behavior for:
 
 1. notifications/status;
 2. modal/dialog DOM behavior;
 3. command-palette presentation/search;
 4. browser file delivery/naming;
 5. SVG icon serialization;
-6. generic HTML/SVG/XML text escaping.
+6. generic HTML/SVG/XML text escaping;
+7. dimension display formatting.
 
 Legacy ownership remains for:
 
@@ -203,30 +255,32 @@ Legacy ownership remains for:
 - icon path registry data;
 - project persistence and backups;
 - project schema and validation;
-- geometry/math helpers;
+- geometry and broadly shared project math;
+- project identity generation;
 - catalog and application state;
+- project unit state and numeric editing;
+- exchange/export domain semantics;
 - 2D/3D rendering.
 
 ## Current validation boundary
 
-V14 has three enforced layers:
+V14 has four enforced layers:
 
 1. **Deterministic source/build validation** — locked baseline, lossless source round trip, exact bridge checks and hashed development artifact.
-2. **Isolated module validation** — behavior suites for each migrated shell/helper service.
-3. **Integrated runtime validation** — Chromium desktop/mobile, Firefox, WebKit and controlled offline Chromium execution against the generated artifact.
+2. **Migration policy validation** — structured ownership/risk inventory and fail-closed selection rules.
+3. **Isolated module validation** — behavior suites for each migrated shell/helper service.
+4. **Integrated runtime validation** — Chromium desktop/mobile, Firefox, WebKit and controlled offline Chromium execution against the generated artifact.
 
 These layers validate the V14 development branch only. They do not replace V13.3.1 physical-device production acceptance.
 
 ## Next V14 milestone
 
-**Milestone 11 should be a migration/dependency inventory rather than another automatic extraction.** The low-state shell/helper layer is now substantially covered. Dev.11 should classify remaining legacy boundaries by:
+There is intentionally **no selected dev.13 extraction**.
 
-- state ownership;
-- mutation risk;
-- dependency/call surface;
-- browser/DOM coupling;
-- schema/persistence implications;
-- independent-test feasibility;
-- user-facing payoff.
+Before dev.13 changes another legacy ownership boundary, V14 must make an explicit direction decision. The valid paths are:
 
-Only after that inventory should V14 select the next extraction. Persistence, project schema, geometry and rendering remain excluded unless the inventory identifies a concrete requirement and a safe migration plan.
+1. identify a concrete product/reliability requirement that justifies another migration and revise the inventory accordingly;
+2. enter stabilization/release-readiness work without moving more stateful code;
+3. prepare a future cutover plan while keeping the validated dev.12 architecture fixed.
+
+Until that decision is recorded, persistence, schema, geometry, rendering, catalog/application state and broad project/orchestration helpers remain legacy-owned.
