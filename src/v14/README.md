@@ -2,31 +2,21 @@
 
 ## Current checkpoint
 
-**14.0.0-dev.17** is the current validated V14 checkpoint.
+**14.0.0-dev.19** is the current audited V14 checkpoint.
 
-The application architecture remains frozen at eight modules and seven exact legacy bridges. Dev.17 adds HTTPS staging and physical-evidence capture infrastructure only.
+The application architecture remains frozen at eight modules and seven exact legacy bridges. Dev.18–dev.19 are audit/release-hardening checkpoints and do not move stateful legacy ownership.
 
 ## Build pipeline
 
-Development artifact:
-
 ```bash
 python tools/v14_build.py --repo-root . --manifest src/v14/manifest.json --output-dir v14-dist --force
-```
-
-Release-candidate artifact:
-
-```bash
 python tools/v14_rc_package.py --repo-root . --source-dir v14-dist --output-dir v14-rc --force
-```
-
-Staging subtree:
-
-```bash
 python tools/v14_staging_package.py --repo-root . --rc-dir v14-rc --output-dir v14-staging --force
 ```
 
-`v14_staging_package.py` copies the exact stripped RC into `v14-rc-staging/app/`, verifies its index/SW hashes, generates the physical acceptance runner, and writes `staging-status.json`.
+The staging package is emitted to a versioned immutable path:
+
+`v14-rc-staging/14.0.0-dev.19/`
 
 ## Frozen module surface
 
@@ -37,55 +27,56 @@ python tools/v14_staging_package.py --repo-root . --rc-dir v14-rc --output-dir v
 5. `shell/icons.js`
 6. `shell/text.js`
 7. `shell/units.js`
-8. `dev-status/dev-status.js` — development packaging only
+8. `dev-status/dev-status.js` — development artifact only
 
 Seven exact legacy bridges remain frozen under `patches/`.
 
-## Staging policy
+## Audit hardening
 
-The stabilization inventory requires:
+Current stabilization policy requires:
 
-- `phase: stabilization`;
 - no new legacy bridges;
 - no production cutover;
-- isolated development cache `atelier-v14-dev-*`;
-- isolated RC cache `atelier-v14-rc-*`;
-- RC diagnostics stripped;
-- staging path `v14-rc-staging/` only;
-- production root runtime immutable;
-- path-scoped staging service worker;
-- exact HTTPS candidate and runner URLs;
-- five real physical targets before physical readiness.
+- own-cache-only V14 service-worker reads;
+- no cross-namespace cache reads;
+- cross-cache poison regression coverage;
+- diagnostics stripped from RC packaging;
+- immutable versioned staging candidates;
+- prior candidates preserved;
+- cache-busted evidence runner URL;
+- strict exact-URL/hash/cache evidence binding;
+- live HTTPS staging verification;
+- frozen production root verification;
+- final production promotion always fail-closed until physical + cutover gates pass.
 
-## Live staging
+## Current live candidate
 
-- Runner: `https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html`
-- Candidate: `https://thiepn.github.io/atelier/v14-rc-staging/app/`
-- Status: `https://thiepn.github.io/atelier/v14-rc-staging/staging-status.json`
+- Runner: `https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/acceptance.html?v=14.0.0-dev.19`
+- Candidate: `https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/app/`
+- Status: `https://thiepn.github.io/atelier/v14-rc-staging/14.0.0-dev.19/staging-status.json`
+- Cache: `atelier-v14-rc-14.0.0-dev.19`
+- Index SHA-256: `e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f`
+- SW SHA-256: `796f11fe4d8a5142b94a28600a5fb7cccf24039c6f73fc4f77879121121aa7e3`
 
-Candidate identity:
-
-- version `14.0.0-dev.17`;
-- cache `atelier-v14-rc-14.0.0-dev.17`;
-- index SHA-256 `e80221516956cd03edb2f92914505fd1ccacbb07ef52fcaa49a5e4ae93d0b89f`;
-- service-worker SHA-256 `bf668c12ecf58f3d7c11cf0ceb98dada3edf6408947ab42caf5aff56802c7043`.
+The obsolete unversioned staging alias was removed. Dev.18 and dev.19 immutable candidates remain preserved.
 
 ## Evidence contract
 
-The runner cannot export evidence until its automatic identity check passes and every target-specific required test is marked PASS with complete tester/device metadata and attestation.
+Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v3`.
 
-Evidence schema: `atelier-v14-rc-physical-acceptance-evidence-v2`.
+The validator binds each evidence file to the exact immutable candidate, runner, status document, RC hashes/cache, target identity and full required test set. Generated report/signoff output files can safely live beside evidence without being re-ingested on later validator runs.
 
-The five required targets remain Firefox Desktop, Safari macOS, Safari iPhone, Safari iPad and Chrome Android installed PWA.
-
-Synthetic CI evidence validates tooling only and never counts as physical evidence.
+Five genuine targets remain required. Synthetic CI evidence is tooling-only.
 
 ## Validation
 
-- dev.17 workflow `34885183276`: PASS
-- independent public HTTPS verification `34885579138`: PASS
-- genuine physical evidence: **0/5**
-- production promotion: **blocked**
+Workflow **`34895451320` — PASS**.
+
+Automated coverage includes Chromium desktop/mobile, Firefox desktop, WebKit desktop/phone/tablet, development offline PWA, cross-cache poison regression, stripped RC offline/cache isolation, runner export/validator compatibility, immutable publication and live HTTPS verification.
+
+Real V14 physical evidence: **0/5**.
+
+Production promotion: **blocked**.
 
 ## Ownership boundary
 
