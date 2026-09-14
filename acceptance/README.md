@@ -25,15 +25,31 @@ Automated browser simulation does **not** satisfy these physical targets.
 
 ## 1. Collect evidence on each physical target
 
-1. Open `DEVICE_ACCEPTANCE_13.3.0.html` on the target device.
-2. Choose the matching target profile.
+### Recommended runner
+
+Open `DEVICE_ACCEPTANCE_13.3.1.html` on the target device. It wraps the unchanged V13.3.0 evidence generator and adds local per-target draft recovery, so a reload or interrupted test does not erase checklist progress.
+
+The wrapper does **not** persist the attestation checkbox. After a reload or restored draft, the tester must review the restored results and attest again before export.
+
+Direct target links are supported with the `target` query parameter:
+
+- `DEVICE_ACCEPTANCE_13.3.1.html?target=firefox-desktop`
+- `DEVICE_ACCEPTANCE_13.3.1.html?target=safari-macos`
+- `DEVICE_ACCEPTANCE_13.3.1.html?target=safari-ios-iphone`
+- `DEVICE_ACCEPTANCE_13.3.1.html?target=safari-ipados-ipad`
+- `DEVICE_ACCEPTANCE_13.3.1.html?target=chrome-android-installed-pwa`
+
+### Test procedure
+
+1. Open the recommended V13.3.1 runner on the real target device/browser.
+2. Confirm the matching target profile is selected.
 3. Open Atelier using the provided production link.
 4. Execute every required checklist item on the real device/browser.
 5. Mark each item PASS or FAIL and add notes for unexpected behavior.
-6. Enter tester name or initials and enable the attestation checkbox.
-7. Export the evidence JSON.
+6. Enter tester name or initials and the environment details requested by the runner.
+7. Review the restored/current results, enable the attestation checkbox, and export the evidence JSON.
 
-V13.3.1 deliberately continues to accept genuine V13.3.0 evidence. Existing evidence does not need to be repeated merely because the aggregation tooling changed.
+`DEVICE_ACCEPTANCE_13.3.0.html` remains available as the original generator. V13.3.1 deliberately continues to accept genuine V13.3.0 evidence, so previously completed physical tests do not need to be repeated merely because the completion tooling changed.
 
 ## 2. Complete final sign-off
 
