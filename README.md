@@ -1,6 +1,6 @@
 # Atelier Space Studio
 
-> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.9** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
+> **V14 DEVELOPMENT BRANCH** — `v14-development` currently builds **14.0.0-dev.10** as a separate, uncertified artifact. Nothing on this branch changes the live production runtime. Production remains Atelier **13.2.0** from `main` while V13.3.1 physical acceptance is still incomplete.
 
 Atelier is a local-first browser space-planning studio with a static PWA deployment.
 
@@ -19,6 +19,7 @@ Completed development milestones:
 7. **14.0.0-dev.7 — Browser shell integration gate** — generated artifact exercised through real Chromium and manifest-driven CI.
 8. **14.0.0-dev.8 — Cross-browser, responsive & offline gate** — Chromium desktop/mobile, Firefox, WebKit, keyboard/focus/accessibility checks and controlled offline reload.
 9. **14.0.0-dev.9 — Modular SVG icon renderer** — pure icon serialization moved behind an exact legacy bridge while the locked icon registry remains legacy-owned.
+10. **14.0.0-dev.10 — Modular text escaping service** — repeated HTML/SVG/XML escaping centralized behind four exact legacy fallbacks.
 
 Build the current development artifact with:
 
@@ -30,23 +31,24 @@ Architecture: `ARCHITECTURE_V14.md`
 
 ### Current V14 validation
 
-Dev.9 passes:
+Dev.10 passes:
 
 - source and overlay unit tests;
-- independent behavior tests for notifications, dialogs, commands, file utilities and icons;
+- independent behavior tests for notifications, dialogs, commands, file utilities, icons and text escaping;
 - exact locked-baseline verification;
 - byte-for-byte source round-trip;
-- exact bridge verification;
+- all exact bridge occurrence checks;
 - generated artifact structure checks;
 - Chromium desktop integration;
 - Chromium 390×844 mobile/touch integration;
 - Firefox desktop integration;
 - WebKit desktop integration;
 - responsive overflow, dialog focus/Escape and accessibility assertions;
+- direct HTML/XML escaping probes;
 - controlled Chromium offline/PWA reload with all V14 shell services restored;
 - artifact upload.
 
-Latest validated artifact: `atelier-v14-dev.9` from workflow run `34815530617`.
+Latest validated artifact: `atelier-v14-dev.10` from workflow run `34816085941`.
 
 ## Production status
 
@@ -89,8 +91,8 @@ V14 development may continue on its isolated branch, but **V14 must not be promo
 - `production.config.json`
 - `RELEASE_NOTES_13.2.0.md`
 - `RELEASE_NOTES_13.3.1.md`
-- `RELEASE_NOTES_14.0.0-dev.1.md` through `RELEASE_NOTES_14.0.0-dev.9.md`
+- `RELEASE_NOTES_14.0.0-dev.1.md` through `RELEASE_NOTES_14.0.0-dev.10.md`
 - `TEST_REPORT_13.2.0.md`
 - `TEST_REPORT_13.3.1.md`
-- `TEST_REPORT_14.0.0-dev.3.md` through `TEST_REPORT_14.0.0-dev.9.md`
+- `TEST_REPORT_14.0.0-dev.3.md` through `TEST_REPORT_14.0.0-dev.10.md`
 - `CERTIFICATION_MATRIX_13.3.1.json`
