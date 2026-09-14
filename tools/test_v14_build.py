@@ -21,13 +21,28 @@ class V14BuildTests(unittest.TestCase):
         (root / "src/v14/dev-status/dev-status.css").write_text("#v14{display:block}\n", "utf-8")
         (root / "src/v14/dev-status/dev-status.js").write_text("console.log('v14');\n", "utf-8")
         (root / "asset.txt").write_text("asset\n", "utf-8")
+        worker = (
+            "const CACHE='atelier-space-studio-13.2.0';\n"
+            "const RELEASE='13.2.0';\n"
+            "const CORE=['./','./index.html','./asset.txt'];\n"
+            "async function one(){const keys=await caches.keys();return keys.filter(k=>k.startsWith('atelier-space-studio-')&&k!==CACHE);}\n"
+            "async function two(){const keys=await caches.keys();return keys.filter(k=>k.startsWith('atelier-space-studio-')&&k!==CACHE);}\n"
+        )
+        (root / "sw.js").write_text(worker, "utf-8")
         manifest = {
             "schema": "atelier-v14-module-manifest-v1",
-            "version": "14.0.0-dev.3",
+            "version": "14.0.0-dev.8",
             "styles": ["dev-status/dev-status.css"],
             "modules": ["dev-status/dev-status.js"],
             "patches": [],
             "passthrough": ["asset.txt"],
+            "serviceWorker": {
+                "source": "sw.js",
+                "output": "sw.js",
+                "expectedSourceSha256": hashlib.sha256(worker.encode("utf-8")).hexdigest(),
+                "baselineCachePrefix": "atelier-space-studio-",
+                "cachePrefix": "atelier-v14-dev-",
+            },
         }
         manifest_path = root / "src/v14/manifest.json"
         manifest_path.write_text(json.dumps(manifest), "utf-8")
@@ -51,11 +66,48 @@ class V14BuildTests(unittest.TestCase):
             a = v14_build.build(root, manifest, root / "out-a")
             b = v14_build.build(root, manifest, root / "out-b")
             self.assertEqual(a["artifact"]["indexSha256"], b["artifact"]["indexSha256"])
+            self.assertEqual(a["serviceWorker"]["outputSha256"], b["serviceWorker"]["outputSha256"])
             html = (root / "out-a/index.html").read_text("utf-8")
             self.assertIn('href="v14/dev-status/dev-status.css"', html)
             self.assertIn('src="v14/dev-status/dev-status.js"', html)
             self.assertEqual((root / "out-a/v14/dev-status/dev-status.js").read_text("utf-8"), "console.log('v14');\n")
             self.assertEqual((root / "out-a/asset.txt").read_text("utf-8"), "asset\n")
+
+    def test_service_worker_isolated_and_offline_complete(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            result = v14_build.build(root, manifest, root / "out")
+            worker = (root / "out/sw.js").read_text("utf-8")
+            record = result["serviceWorker"]
+            self.assertIn("const CACHE='atelier-v14-dev-14.0.0-dev.8';", worker)
+            self.assertIn("const RELEASE='14.0.0-dev.8';", worker)
+            self.assertIn('./v14/dev-status/dev-status.css', worker)
+            self.assertIn('./v14/dev-status/dev-status.js', worker)
+            self.assertNotIn("k.startsWith('atelier-space-studio-')", worker)
+            self.assertEqual(worker.count("k.startsWith('atelier-v14-dev-')"), 2)
+            self.assertEqual(record["cache"], "atelier-v14-dev-14.0.0-dev.8")
+            self.assertEqual(record["stalePrefixReplacements"], 2)
+            self.assertIn('./v14/dev-status/dev-status.css', record["core"])
+            self.assertIn('./v14/dev-status/dev-status.js', record["core"])
+
+    def test_service_worker_source_hash_mismatch_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            (root / "sw.js").write_text("changed", "utf-8")
+            with self.assertRaises(ValueError):
+                v14_build.build(root, manifest, root / "out")
+
+    def test_service_worker_output_cannot_be_passthrough(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = self.fixture(root)
+            data = json.loads(manifest.read_text("utf-8"))
+            data["passthrough"].append("sw.js")
+            manifest.write_text(json.dumps(data), "utf-8")
+            with self.assertRaises(ValueError):
+                v14_build.build(root, manifest, root / "out")
 
     def test_exact_patch_applied_and_recorded(self):
         with tempfile.TemporaryDirectory() as tmp:
