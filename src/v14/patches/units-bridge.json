@@ -1,0 +1,13 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-units-bridge",
+  "description": "Delegate pure dimension formatting to the V14 units service while retaining the complete legacy fmtDim body as fallback.",
+  "changes": [
+    {
+      "id": "dimension-formatting-bridge",
+      "expectedOccurrences": 1,
+      "find": "function fmtDim(n,units='m'){",
+      "replace": "function fmtDim(n,units='m'){const service=globalThis.AtelierV14Shell?.units;if(service?.formatDimension)return service.formatDimension(n,units);"
+    }
+  ]
+}
