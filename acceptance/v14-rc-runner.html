@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Atelier V14 RC Physical Acceptance</title>
+<style>
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#1c1c1a;background:#f4f3ee}*{box-sizing:border-box}body{margin:0}.wrap{max-width:1100px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}.card{background:#fff;border:1px solid #d8d6ce;border-radius:14px;padding:18px;margin:14px 0}h1{margin:0 0 6px;font-size:28px}h2{margin:0 0 12px;font-size:20px}.muted{color:#666}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px}label{display:block;font-weight:650;margin-bottom:6px}select,input,textarea{width:100%;font:inherit;padding:10px 12px;border:1px solid #bbb8ae;border-radius:9px;background:white}textarea{min-height:70px}.test{display:grid;grid-template-columns:minmax(190px,1fr) 150px minmax(220px,1.5fr);gap:12px;align-items:center;padding:12px 0;border-top:1px solid #eceae3}.test:first-child{border-top:0}.test-title{font-weight:700}.test-desc{font-size:13px;color:#666;margin-top:3px}.actions{display:flex;gap:10px;flex-wrap:wrap}.button,button{font:inherit;font-weight:700;border:0;border-radius:9px;padding:11px 14px;cursor:pointer;background:#20201e;color:white;text-decoration:none;display:inline-block}.secondary{background:#e8e6df;color:#1c1c1a}.danger{background:#8d2020}.status{font-weight:800}.blocked{color:#9b1c1c}.ready{color:#176735}.meta{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;white-space:pre-wrap;overflow-wrap:anywhere}.attest{display:flex;gap:9px;align-items:flex-start}.attest input{width:auto;margin-top:4px}@media(max-width:720px){.wrap{padding:12px}.card{padding:14px}.test{grid-template-columns:1fr}.button,button{min-height:44px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top"><div><h1>Atelier V14 RC Physical Acceptance</h1><div id="subtitle" class="muted">Loading candidate identity…</div></div><div id="gate" class="status blocked">EVIDENCE BLOCKED</div></div>
+  <section class="card"><h2>1. Candidate identity</h2><div id="identity" class="meta">Verifying staging artifact…</div><div class="actions"><a id="openCandidate" class="button" target="_blank" rel="noopener">Open staged RC</a><button id="verify" class="secondary" type="button">Re-verify identity</button></div></section>
+  <section class="card"><h2>2. Device & tester</h2><div class="grid"><div><label for="target">Required target</label><select id="target"></select></div><div><label for="tester">Tester</label><input id="tester" type="text"></div><div><label for="device">Device model</label><input id="device" type="text"></div><div><label for="os">OS version</label><input id="os" type="text"></div><div><label for="browser">Browser version</label><input id="browser" type="text"></div></div></section>
+  <section class="card"><h2>3. Acceptance checklist</h2><div id="tests"></div></section>
+  <section class="card"><h2>4. Evidence & attestation</h2><label for="generalNotes">General notes</label><textarea id="generalNotes"></textarea><p class="attest"><input id="attest" type="checkbox"><label for="attest" style="font-weight:500">I performed the marked tests on the actual selected browser/device against the exact staged RC shown above. I did not substitute an emulator or simulator unless explicitly noted.</label></p><div class="actions"><button id="export" type="button">Export evidence JSON</button><button id="clear" type="button" class="danger">Clear this target draft</button></div><p id="summary" class="muted"></p></section>
+</div>
+<script src="acceptance.js"></script>
+</body>
+</html>
