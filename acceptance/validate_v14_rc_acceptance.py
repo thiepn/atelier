@@ -6,6 +6,7 @@ import datetime
 import hashlib
 import json
 import pathlib
+import re
 import tempfile
 from urllib.parse import urlparse
 
@@ -13,6 +14,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 PLAN = json.loads((HERE / 'v14-rc-required-targets.json').read_text(encoding='utf-8'))
 EXPECTED_PLAN_SCHEMA = 'atelier-v14-rc-acceptance-plan-v3'
 ALLOWED_RESULT_STATUSES = {'NOT_TESTED', 'PASS', 'FAIL'}
+VERSION_RE = re.compile(r'^14\.0\.0-dev\.\d+$')
 
 
 def stable(value):
@@ -90,6 +92,19 @@ def expected_candidate_origin():
     return normalized_origin(DEPLOYMENT['url'])
 
 
+def expected_rc_version():
+    parsed = parse_url(DEPLOYMENT['url'], require_directory=True)
+    if not parsed:
+        raise ValueError('candidate deployment URL is invalid')
+    versions = [part for part in parsed.path.split('/') if VERSION_RE.fullmatch(part)]
+    if len(versions) != 1:
+        raise ValueError('candidate deployment URL must contain exactly one V14 dev version')
+    return versions[0]
+
+
+EXPECTED_RC_VERSION = expected_rc_version()
+
+
 def parse_timestamp(value):
     if not isinstance(value, str) or not value.strip():
         return None
@@ -108,15 +123,21 @@ def parse_timestamp(value):
 def load_rc_status(path):
     status = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
     errors = []
+    if not isinstance(status, dict):
+        raise ValueError('RC status must be a JSON object')
     if status.get('schema') != PLAN['requiredRcStatusSchema']:
         errors.append('unexpected RC status schema')
     if status.get('artifactKind') != 'release-candidate':
         errors.append('artifactKind must be release-candidate')
     if status.get('diagnosticsStripped') is not True:
         errors.append('RC diagnostics are not marked stripped')
+    if status.get('ownCacheLookupOnly') is not True:
+        errors.append('RC status must declare own-cache-only service-worker reads')
     version = status.get('version')
-    if not isinstance(version, str) or not version.startswith('14.0.0-dev.'):
+    if not isinstance(version, str) or not VERSION_RE.fullmatch(version):
         errors.append('unexpected RC version')
+    elif version != EXPECTED_RC_VERSION:
+        errors.append(f'RC version does not match staged candidate path: expected {EXPECTED_RC_VERSION}, got {version}')
     for key in ('indexSha256', 'serviceWorkerSha256'):
         value = status.get(key)
         if not isinstance(value, str) or len(value) != 64 or any(c not in '0123456789abcdef' for c in value):
@@ -194,9 +215,8 @@ def validate_file(path, rc_status):
     environment = original.get('environment')
     if not isinstance(environment, dict):
         errors.append('environment must be an object')
-    else:
-        if parse_timestamp(environment.get('timestamp')) is None:
-            errors.append('environment.timestamp must be a timezone-aware ISO-8601 timestamp')
+    elif parse_timestamp(environment.get('timestamp')) is None:
+        errors.append('environment.timestamp must be a timezone-aware ISO-8601 timestamp')
 
     target_data = original.get('target')
     target_id = target_data.get('id') if isinstance(target_data, dict) else None
@@ -252,7 +272,6 @@ def collect(evidence_dir, rc_status):
     files = sorted(pathlib.Path(evidence_dir).glob('*.json'))
     by_target = {}
     failures = []
-
     for path in files:
         target_id, data, errors = validate_file(path, rc_status)
         if errors:
@@ -322,7 +341,6 @@ def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
     by_target, failures, missing, physical_ready = collect(evidence_dir, rc_status)
     prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
     promotion_ready = physical_ready and prior_gate_ready
-
     print(f'VALID_RC_EVIDENCE={len(by_target)}/{len(PLAN["targets"])}')
     for target_id in sorted(by_target):
         print(f'PASS {target_id}: {by_target[target_id]["filename"]}')
@@ -336,10 +354,7 @@ def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
     print('PROMOTION_READY=' + ('true' if promotion_ready else 'false'))
 
     if write_report:
-        pathlib.Path(write_report).write_text(
-            json.dumps(build_report(by_target, failures, missing, physical_ready, rc_status), indent=2) + '\n',
-            encoding='utf-8',
-        )
+        pathlib.Path(write_report).write_text(json.dumps(build_report(by_target, failures, missing, physical_ready, rc_status), indent=2) + '\n', encoding='utf-8')
     if write_signoff:
         if not physical_ready:
             print('PHYSICAL_SIGNOFF_FILE=not-written (physical gate blocked)')
@@ -347,7 +362,6 @@ def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
             path = pathlib.Path(write_signoff)
             path.write_text(json.dumps(build_physical_signoff(by_target, rc_status), indent=2) + '\n', encoding='utf-8')
             print(f'PHYSICAL_SIGNOFF_FILE={path}')
-
     return 0 if physical_ready else 2
 
 
@@ -405,16 +419,14 @@ def self_test(rc_status_path):
 
         firefox_path = root / 'firefox-desktop.json'
         good = fixture_payload(targets[0], rc_status)
-
         cases = []
-        bad = json.loads(json.dumps(good)); bad['rcIndexSha256'] = '0' * 64; cases.append(('index-hash', bad))
-        bad = json.loads(json.dumps(good)); bad['candidateUrl'] = DEPLOYMENT['productionUrl']; cases.append(('candidate-url', bad))
-        bad = json.loads(json.dumps(good)); bad['runnerUrl'] = DEPLOYMENT['runnerUrl'].replace('?v=14.0.0-dev.18', ''); cases.append(('runner-url', bad))
-        bad = json.loads(json.dumps(good)); bad['target']['label'] = 'Wrong target'; cases.append(('target-label', bad))
-        bad = json.loads(json.dumps(good)); bad['results'].append({'id': 'unexpected-check', 'status': 'PASS', 'notes': ''}); cases.append(('extra-result', bad))
-        bad = json.loads(json.dumps(good)); bad['environment']['timestamp'] = '2026-09-14T00:00:00'; cases.append(('timestamp', bad))
-
-        for _, bad in cases:
+        bad = json.loads(json.dumps(good)); bad['rcIndexSha256'] = '0' * 64; cases.append(bad)
+        bad = json.loads(json.dumps(good)); bad['candidateUrl'] = DEPLOYMENT['productionUrl']; cases.append(bad)
+        bad = json.loads(json.dumps(good)); bad['runnerUrl'] = DEPLOYMENT['runnerUrl'].replace('?v=' + EXPECTED_RC_VERSION, ''); cases.append(bad)
+        bad = json.loads(json.dumps(good)); bad['target']['label'] = 'Wrong target'; cases.append(bad)
+        bad = json.loads(json.dumps(good)); bad['results'].append({'id': 'unexpected-check', 'status': 'PASS', 'notes': ''}); cases.append(bad)
+        bad = json.loads(json.dumps(good)); bad['environment']['timestamp'] = '2026-09-14T00:00:00'; cases.append(bad)
+        for bad in cases:
             write_fixture(firefox_path, resign(bad))
             target_id, _, errors = validate_file(firefox_path, rc_status)
             assert target_id == 'firefox-desktop' and errors
@@ -423,7 +435,19 @@ def self_test(rc_status_path):
         write_fixture(root / 'firefox-copy.json', fixture_payload(targets[0], rc_status))
         assert run(root, rc_status_path) == 2
 
-    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true')
+        wrong_status = dict(rc_status)
+        wrong_status['version'] = '14.0.0-dev.17'
+        wrong_status['cache'] = 'atelier-v14-rc-14.0.0-dev.17'
+        wrong_path = root / 'wrong-status.json'
+        wrong_path.write_text(json.dumps(wrong_status), encoding='utf-8')
+        try:
+            load_rc_status(wrong_path)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError('wrong candidate version status was accepted')
+
+    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true own_cache_only=true')
     return 0
 
 
