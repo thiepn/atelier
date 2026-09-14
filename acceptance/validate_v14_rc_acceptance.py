@@ -11,6 +11,8 @@ from urllib.parse import urlparse
 
 HERE = pathlib.Path(__file__).resolve().parent
 PLAN = json.loads((HERE / 'v14-rc-required-targets.json').read_text(encoding='utf-8'))
+EXPECTED_PLAN_SCHEMA = 'atelier-v14-rc-acceptance-plan-v3'
+ALLOWED_RESULT_STATUSES = {'NOT_TESTED', 'PASS', 'FAIL'}
 
 
 def stable(value):
@@ -31,6 +33,76 @@ def file_sha256(path):
         for chunk in iter(lambda: handle.read(1024 * 1024), b''):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def validate_plan():
+    errors = []
+    if PLAN.get('schema') != EXPECTED_PLAN_SCHEMA:
+        errors.append(f'acceptance plan must use {EXPECTED_PLAN_SCHEMA}')
+    deployment = PLAN.get('candidateDeployment')
+    if not isinstance(deployment, dict):
+        errors.append('candidateDeployment is required')
+    else:
+        for field in ('url', 'runnerUrl', 'statusUrl', 'productionUrl'):
+            value = deployment.get(field)
+            if not isinstance(value, str) or not value:
+                errors.append(f'candidateDeployment.{field} is required')
+        if deployment.get('httpsRequired') is not True:
+            errors.append('candidateDeployment.httpsRequired must be true')
+        if deployment.get('exactUrlEvidenceRequired') is not True:
+            errors.append('candidateDeployment.exactUrlEvidenceRequired must be true')
+        if deployment.get('versionedPathRequired') is not True:
+            errors.append('candidateDeployment.versionedPathRequired must be true')
+        if deployment.get('runnerCacheBustRequired') is not True:
+            errors.append('candidateDeployment.runnerCacheBustRequired must be true')
+    if errors:
+        raise ValueError('; '.join(errors))
+
+
+validate_plan()
+DEPLOYMENT = PLAN['candidateDeployment']
+
+
+def parse_url(value, *, require_directory=False, allow_query=False):
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return None
+    if parsed.scheme != 'https' or not parsed.netloc or parsed.username is not None or parsed.password is not None or parsed.fragment:
+        return None
+    if not allow_query and parsed.query:
+        return None
+    if require_directory and not parsed.path.endswith('/'):
+        return None
+    return parsed
+
+
+def normalized_origin(value):
+    parsed = parse_url(value, allow_query=True)
+    if not parsed:
+        return None
+    return f'{parsed.scheme}://{parsed.netloc}/'
+
+
+def expected_candidate_origin():
+    return normalized_origin(DEPLOYMENT['url'])
+
+
+def parse_timestamp(value):
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    if text.endswith('Z'):
+        text = text[:-1] + '+00:00'
+    try:
+        parsed = datetime.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
 
 
 def load_rc_status(path):
@@ -60,20 +132,16 @@ def load_rc_status(path):
     return status
 
 
-def valid_candidate_origin(value):
-    try:
-        parsed = urlparse(value)
-    except Exception:
-        return False
-    return parsed.scheme == 'https' and bool(parsed.netloc) and parsed.username is None and parsed.password is None
-
-
 def expected_identity(rc_status):
     return {
         'rcVersion': rc_status['version'],
         'rcIndexSha256': rc_status['indexSha256'],
         'rcServiceWorkerSha256': rc_status['serviceWorkerSha256'],
         'rcCache': rc_status['cache'],
+        'candidateOrigin': expected_candidate_origin(),
+        'candidateUrl': DEPLOYMENT['url'],
+        'runnerUrl': DEPLOYMENT['runnerUrl'],
+        'stagingStatusUrl': DEPLOYMENT['statusUrl'],
     }
 
 
@@ -83,6 +151,8 @@ def validate_file(path, rc_status):
         original = json.loads(pathlib.Path(path).read_text(encoding='utf-8'))
     except Exception as exc:
         return None, None, [f'invalid JSON: {exc}']
+    if not isinstance(original, dict):
+        return None, None, ['evidence must be a JSON object']
 
     data = dict(original)
     supplied_fingerprint = data.pop('evidenceFingerprint', None)
@@ -97,14 +167,21 @@ def validate_file(path, rc_status):
         if original.get(key) != expected:
             errors.append(f'{key} mismatch')
 
+    candidate_url = original.get('candidateUrl')
+    production_url = DEPLOYMENT['productionUrl']
+    if parse_url(candidate_url, require_directory=True) is None:
+        errors.append('candidateUrl must be a clean HTTPS directory URL')
+    if candidate_url == production_url:
+        errors.append('candidateUrl must not be the production URL')
+    runner_url = original.get('runnerUrl')
+    if parse_url(runner_url, allow_query=True) is None:
+        errors.append('runnerUrl must be a valid HTTPS URL')
+    status_url = original.get('stagingStatusUrl')
+    if parse_url(status_url) is None:
+        errors.append('stagingStatusUrl must be a clean HTTPS URL')
     candidate_origin = original.get('candidateOrigin')
-    if not valid_candidate_origin(candidate_origin):
-        errors.append('candidateOrigin must be an HTTPS origin')
-    else:
-        parsed = urlparse(candidate_origin)
-        normalized = f'{parsed.scheme}://{parsed.netloc}/'
-        if candidate_origin != normalized:
-            errors.append('candidateOrigin must be normalized to scheme://host[:port]/')
+    if candidate_origin != expected_candidate_origin():
+        errors.append('candidateOrigin mismatch')
 
     if original.get('attested') is not True:
         errors.append('tester attestation missing')
@@ -114,28 +191,57 @@ def validate_file(path, rc_status):
         if not str(original.get(field, '')).strip():
             errors.append(f'{field} missing')
 
-    target_id = (original.get('target') or {}).get('id')
+    environment = original.get('environment')
+    if not isinstance(environment, dict):
+        errors.append('environment must be an object')
+    else:
+        if parse_timestamp(environment.get('timestamp')) is None:
+            errors.append('environment.timestamp must be a timezone-aware ISO-8601 timestamp')
+
+    target_data = original.get('target')
+    target_id = target_data.get('id') if isinstance(target_data, dict) else None
     target = next((item for item in PLAN['targets'] if item['id'] == target_id), None)
     if not target:
         errors.append(f'unknown target {target_id!r}')
         return target_id, original, errors
+    if target_data.get('label') != target['label']:
+        errors.append('target label mismatch')
 
     results = original.get('results')
+    result_map = {}
+    seen_ids = []
     if not isinstance(results, list):
         errors.append('results must be a list')
-        result_map = {}
     else:
-        result_map = {}
         for result in results:
             if not isinstance(result, dict):
                 errors.append('invalid result entry')
                 continue
             result_id = result.get('id')
+            if not isinstance(result_id, str) or not result_id:
+                errors.append('result id is required')
+                continue
             if result_id in result_map:
                 errors.append(f'duplicate result {result_id!r}')
-            result_map[result_id] = result.get('status')
+                continue
+            status = result.get('status')
+            if status not in ALLOWED_RESULT_STATUSES:
+                errors.append(f'{result_id}: invalid status {status!r}')
+            result_map[result_id] = status
+            seen_ids.append(result_id)
 
-    for test_id in target['requiredTests']:
+    required_tests = target['requiredTests']
+    required_set = set(required_tests)
+    result_set = set(seen_ids)
+    missing_results = sorted(required_set - result_set)
+    extra_results = sorted(result_set - required_set)
+    if missing_results:
+        errors.append('missing result ids: ' + ', '.join(missing_results))
+    if extra_results:
+        errors.append('unexpected result ids: ' + ', '.join(extra_results))
+    if len(seen_ids) != len(required_tests):
+        errors.append(f'result count mismatch: expected {len(required_tests)}, got {len(seen_ids)}')
+    for test_id in required_tests:
         if result_map.get(test_id) != 'PASS':
             errors.append(f'{test_id}: required PASS, got {result_map.get(test_id)!r}')
 
@@ -146,16 +252,9 @@ def collect(evidence_dir, rc_status):
     files = sorted(pathlib.Path(evidence_dir).glob('*.json'))
     by_target = {}
     failures = []
-    candidate_origin = None
 
     for path in files:
         target_id, data, errors = validate_file(path, rc_status)
-        if not errors and data:
-            origin = data.get('candidateOrigin')
-            if candidate_origin is None:
-                candidate_origin = origin
-            elif origin != candidate_origin:
-                errors.append(f'candidateOrigin differs from previously accepted evidence {candidate_origin}')
         if errors:
             failures.append((path.name, errors))
         elif target_id:
@@ -172,22 +271,24 @@ def collect(evidence_dir, rc_status):
                     'browserVersion': data.get('browserVersion', ''),
                     'capturedAt': (data.get('environment') or {}).get('timestamp', ''),
                     'candidateOrigin': data.get('candidateOrigin', ''),
+                    'candidateUrl': data.get('candidateUrl', ''),
+                    'runnerUrl': data.get('runnerUrl', ''),
+                    'stagingStatusUrl': data.get('stagingStatusUrl', ''),
                 }
 
     required = {target['id'] for target in PLAN['targets']}
     missing = sorted(required - set(by_target))
     physical_ready = not failures and not missing
-    return by_target, failures, missing, physical_ready, candidate_origin
+    return by_target, failures, missing, physical_ready
 
 
-def build_physical_signoff(by_target, rc_status, candidate_origin):
+def build_physical_signoff(by_target, rc_status):
     target_order = [target['id'] for target in PLAN['targets']]
     prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
     payload = {
         'schema': PLAN['physicalSignoffSchema'],
         'acceptanceMilestone': PLAN['acceptanceMilestone'],
         **expected_identity(rc_status),
-        'candidateOrigin': candidate_origin,
         'physicalState': 'PASS',
         'priorReleaseGateReady': prior_gate_ready,
         'promotionReady': prior_gate_ready,
@@ -200,12 +301,11 @@ def build_physical_signoff(by_target, rc_status, candidate_origin):
     return output
 
 
-def build_report(by_target, failures, missing, physical_ready, candidate_origin, rc_status):
+def build_report(by_target, failures, missing, physical_ready, rc_status):
     prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
     return {
         'acceptanceMilestone': PLAN['acceptanceMilestone'],
         **expected_identity(rc_status),
-        'candidateOrigin': candidate_origin,
         'validEvidence': len(by_target),
         'requiredEvidence': len(PLAN['targets']),
         'failures': [{'filename': name, 'errors': errors} for name, errors in failures],
@@ -219,7 +319,7 @@ def build_report(by_target, failures, missing, physical_ready, candidate_origin,
 
 def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
     rc_status = load_rc_status(rc_status_path)
-    by_target, failures, missing, physical_ready, candidate_origin = collect(evidence_dir, rc_status)
+    by_target, failures, missing, physical_ready = collect(evidence_dir, rc_status)
     prior_gate_ready = bool(rc_status['certificationGate'].get('promotionEligible'))
     promotion_ready = physical_ready and prior_gate_ready
 
@@ -237,7 +337,7 @@ def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
 
     if write_report:
         pathlib.Path(write_report).write_text(
-            json.dumps(build_report(by_target, failures, missing, physical_ready, candidate_origin, rc_status), indent=2) + '\n',
+            json.dumps(build_report(by_target, failures, missing, physical_ready, rc_status), indent=2) + '\n',
             encoding='utf-8',
         )
     if write_signoff:
@@ -245,24 +345,23 @@ def run(evidence_dir, rc_status_path, write_signoff=None, write_report=None):
             print('PHYSICAL_SIGNOFF_FILE=not-written (physical gate blocked)')
         else:
             path = pathlib.Path(write_signoff)
-            path.write_text(json.dumps(build_physical_signoff(by_target, rc_status, candidate_origin), indent=2) + '\n', encoding='utf-8')
+            path.write_text(json.dumps(build_physical_signoff(by_target, rc_status), indent=2) + '\n', encoding='utf-8')
             print(f'PHYSICAL_SIGNOFF_FILE={path}')
 
     return 0 if physical_ready else 2
 
 
-def fixture_payload(target, rc_status, origin='https://rc.example.test/'):
+def fixture_payload(target, rc_status):
     payload = {
         'schema': PLAN['evidenceSchema'],
         'acceptanceMilestone': PLAN['acceptanceMilestone'],
         **expected_identity(rc_status),
-        'candidateOrigin': origin,
         'target': {'id': target['id'], 'label': target['label']},
         'tester': 'CI fixture',
         'deviceModel': 'fixture',
         'osVersion': 'fixture',
         'browserVersion': 'fixture',
-        'environment': {'timestamp': '2026-09-14T00:00:00Z'},
+        'environment': {'timestamp': '2026-09-14T00:00:00+00:00'},
         'results': [{'id': test_id, 'status': 'PASS', 'notes': ''} for test_id in target['requiredTests']],
         'generalNotes': 'synthetic validator fixture',
         'attested': True,
@@ -272,40 +371,59 @@ def fixture_payload(target, rc_status, origin='https://rc.example.test/'):
     return output
 
 
+def write_fixture(path, payload):
+    path.write_text(json.dumps(payload, indent=2), encoding='utf-8')
+
+
+def resign(payload):
+    body = {key: value for key, value in payload.items() if key != 'evidenceFingerprint'}
+    payload['evidenceFingerprint'] = fingerprint(body)
+    return payload
+
+
 def self_test(rc_status_path):
     rc_status = load_rc_status(rc_status_path)
     with tempfile.TemporaryDirectory() as temp_dir:
         root = pathlib.Path(temp_dir)
-        for target in PLAN['targets']:
-            (root / f'{target["id"]}.json').write_text(json.dumps(fixture_payload(target, rc_status), indent=2), encoding='utf-8')
+        targets = PLAN['targets']
+        for target in targets:
+            write_fixture(root / f'{target["id"]}.json', fixture_payload(target, rc_status))
 
         signoff = root / 'physical-signoff.json'
         report = root / 'report.json'
         assert run(root, rc_status_path, signoff, report) == 0
         report_data = json.loads(report.read_text(encoding='utf-8'))
         assert report_data['physicalReady'] is True
+        assert report_data['candidateUrl'] == DEPLOYMENT['url']
+        assert report_data['runnerUrl'] == DEPLOYMENT['runnerUrl']
         assert report_data['promotionReady'] is bool(rc_status['certificationGate'].get('promotionEligible'))
         signed = json.loads(signoff.read_text(encoding='utf-8'))
         signed_payload = dict(signed)
         supplied = signed_payload.pop('signoffFingerprint')
         assert supplied == fingerprint(signed_payload)
-        assert len(signed['evidence']) == len(PLAN['targets'])
+        assert len(signed['evidence']) == len(targets)
 
-        bad_path = root / 'firefox-desktop.json'
-        bad = json.loads(bad_path.read_text(encoding='utf-8'))
-        bad['rcIndexSha256'] = '0' * 64
-        bad_payload = {key: value for key, value in bad.items() if key != 'evidenceFingerprint'}
-        bad['evidenceFingerprint'] = fingerprint(bad_payload)
-        bad_path.write_text(json.dumps(bad), encoding='utf-8')
-        signoff.unlink()
-        assert run(root, rc_status_path, signoff, report) == 2
-        assert not signoff.exists()
+        firefox_path = root / 'firefox-desktop.json'
+        good = fixture_payload(targets[0], rc_status)
 
-        bad_path.write_text(json.dumps(fixture_payload(PLAN['targets'][0], rc_status)), encoding='utf-8')
-        (root / 'firefox-copy.json').write_text(json.dumps(fixture_payload(PLAN['targets'][0], rc_status)), encoding='utf-8')
+        cases = []
+        bad = json.loads(json.dumps(good)); bad['rcIndexSha256'] = '0' * 64; cases.append(('index-hash', bad))
+        bad = json.loads(json.dumps(good)); bad['candidateUrl'] = DEPLOYMENT['productionUrl']; cases.append(('candidate-url', bad))
+        bad = json.loads(json.dumps(good)); bad['runnerUrl'] = DEPLOYMENT['runnerUrl'].replace('?v=14.0.0-dev.18', ''); cases.append(('runner-url', bad))
+        bad = json.loads(json.dumps(good)); bad['target']['label'] = 'Wrong target'; cases.append(('target-label', bad))
+        bad = json.loads(json.dumps(good)); bad['results'].append({'id': 'unexpected-check', 'status': 'PASS', 'notes': ''}); cases.append(('extra-result', bad))
+        bad = json.loads(json.dumps(good)); bad['environment']['timestamp'] = '2026-09-14T00:00:00'; cases.append(('timestamp', bad))
+
+        for _, bad in cases:
+            write_fixture(firefox_path, resign(bad))
+            target_id, _, errors = validate_file(firefox_path, rc_status)
+            assert target_id == 'firefox-desktop' and errors
+
+        write_fixture(firefox_path, good)
+        write_fixture(root / 'firefox-copy.json', fixture_payload(targets[0], rc_status))
         assert run(root, rc_status_path) == 2
 
-    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS')
+    print('V14_RC_ACCEPTANCE_SELF_TEST=PASS plan=v3 exact_url=true')
     return 0
 
 
