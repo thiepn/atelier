@@ -31,22 +31,25 @@ def load_json(path: Path) -> dict:
 def certification_gate(matrix: dict) -> dict:
     final = matrix.get('finalSignoff') or {}
     evidence = matrix.get('evidenceInventory') or {}
-    blockers: list[str] = []
+    prior_blockers: list[str] = []
     if final.get('state') != 'pass':
-        blockers.append('prior-final-signoff-not-pass')
+        prior_blockers.append('prior-final-signoff-not-pass')
     if final.get('runtimeMayAdvanceToV14') is not True:
-        blockers.append('runtime-advance-not-authorized')
+        prior_blockers.append('runtime-advance-not-authorized')
     valid = evidence.get('valid')
     required = evidence.get('required')
     if not isinstance(valid, int) or not isinstance(required, int) or valid < required:
-        blockers.append('physical-evidence-incomplete')
+        prior_blockers.append('physical-evidence-incomplete')
+    blockers = [*prior_blockers, 'v14-physical-signoff-required', 'v14-cutover-verification-required']
     return {
         'sourceMilestone': matrix.get('signoffMilestone'),
         'priorRuntime': matrix.get('runtimeRelease'),
         'priorFinalSignoff': final.get('state'),
         'runtimeMayAdvanceToV14': final.get('runtimeMayAdvanceToV14') is True,
         'physicalEvidence': {'valid': valid, 'required': required},
-        'promotionEligible': not blockers,
+        'priorReleaseGateReady': not prior_blockers,
+        'priorReleaseBlockers': prior_blockers,
+        'promotionEligible': False,
         'blockers': blockers,
     }
 
@@ -76,8 +79,8 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
 
     matrix = load_json(repo_root / 'CERTIFICATION_MATRIX_13.3.1.json')
     gate = certification_gate(matrix)
-    if require_eligible and not gate['promotionEligible']:
-        raise ValueError('Production eligibility blocked: ' + ', '.join(gate['blockers']))
+    if require_eligible:
+        raise ValueError('Production eligibility is intentionally unavailable at RC packaging: ' + ', '.join(gate['blockers']))
 
     index_path = output_dir / 'index.html'
     html = index_path.read_text('utf-8')
@@ -122,7 +125,7 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
 
     build['artifactKind'] = 'release-candidate'
     build['developmentOnly'] = False
-    build['productionEligible'] = gate['promotionEligible']
+    build['productionEligible'] = False
     build['diagnosticsStripped'] = True
     build['certificationGate'] = gate
     build['artifact']['indexSha256'] = sha256(index_path.read_bytes())
@@ -142,7 +145,7 @@ def package(repo_root: Path, source_dir: Path, output_dir: Path, force: bool = F
         'artifactKind': 'release-candidate',
         'diagnosticsStripped': True,
         'ownCacheLookupOnly': True,
-        'productionEligible': gate['promotionEligible'],
+        'productionEligible': False,
         'certificationGate': gate,
         'indexSha256': build['artifact']['indexSha256'],
         'serviceWorkerSha256': sw['outputSha256'],
@@ -162,7 +165,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         result = package(Path(args.repo_root), Path(args.source_dir), Path(args.output_dir), args.force, args.require_production_eligible)
-        print('V14_RC_PACKAGE_OK=true version=' + result['version'] + ' own_cache_only=true production_eligible=' + str(result['productionEligible']).lower() + ' blockers=' + ','.join(result['certificationGate']['blockers']))
+        gate = result['certificationGate']
+        print('V14_RC_PACKAGE_OK=true version=' + result['version'] + ' own_cache_only=true prior_gate_ready=' + str(gate['priorReleaseGateReady']).lower() + ' production_eligible=false blockers=' + ','.join(gate['blockers']))
         return 0
     except (OSError, ValueError, KeyError, json.JSONDecodeError, SyntaxError) as exc:
         print(f'ERROR: {exc}', file=sys.stderr)
