@@ -1,6 +1,6 @@
 {
   "schema": "atelier-v14-migration-inventory-v1",
-  "version": "14.0.0-dev.16",
+  "version": "14.0.0-dev.17",
   "policy": {
     "phase": "stabilization",
     "excludedByDefault": [
@@ -56,6 +56,17 @@
         "cutoverPlan": "acceptance/v14-rc-cutover-plan.json",
         "allowPhysicalEvidenceBeforePriorSignoff": true,
         "allowPromotionBeforePriorSignoff": false
+      },
+      "staging": {
+        "enabled": true,
+        "publishBranch": "main",
+        "publishPath": "v14-rc-staging/",
+        "candidateUrl": "https://thiepn.github.io/atelier/v14-rc-staging/app/",
+        "runnerUrl": "https://thiepn.github.io/atelier/v14-rc-staging/acceptance.html",
+        "productionUrl": "https://thiepn.github.io/atelier/",
+        "productionRootRuntimeImmutable": true,
+        "serviceWorkerScopeIsolatedByPath": true,
+        "physicalEvidenceRunner": "acceptance.html"
       }
     }
   },
