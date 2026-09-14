@@ -32,6 +32,9 @@ jobs:
           node --check src/v14/shell/notifications.js
           node --check src/v14/dev-status/dev-status.js
 
+      - name: Run shell notification behavior test
+        run: node tools/test_v14_notifications.mjs src/v14/shell/notifications.js
+
       - name: Verify frozen V14 baseline
         run: python tools/v14_source.py verify-lock --input index.html --lock src/source.lock.json
 
