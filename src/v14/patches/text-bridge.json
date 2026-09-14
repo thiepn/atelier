@@ -1,0 +1,31 @@
+{
+  "schema": "atelier-v14-exact-patch-v1",
+  "id": "shell-text-bridge",
+  "description": "Delegate generic HTML/SVG/XML escaping helpers to the V14 text service while retaining each exact legacy implementation as fallback.",
+  "changes": [
+    {
+      "id": "html-escape-bridge",
+      "expectedOccurrences": 1,
+      "find": "const esc = value => String(value ?? '').replace(/[&<>\\\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));",
+      "replace": "const esc = value => {const service=globalThis.AtelierV14Shell?.text;if(service?.escapeHtml)return service.escapeHtml(value);return String(value ?? '').replace(/[&<>\\\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));};"
+    },
+    {
+      "id": "svg-escape-bridge",
+      "expectedOccurrences": 1,
+      "find": "function svgEsc(s){return String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));}",
+      "replace": "function svgEsc(s){const service=globalThis.AtelierV14Shell?.text;if(service?.escapeHtml)return service.escapeHtml(s);return String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));}"
+    },
+    {
+      "id": "plan-xml-escape-bridge",
+      "expectedOccurrences": 1,
+      "find": "const xml=s=>String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));",
+      "replace": "const xml=s=>{const service=globalThis.AtelierV14Shell?.text;if(service?.escapeHtml)return service.escapeHtml(s);return String(s??'').replace(/[&<>\\\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;',\"'\":'&#39;'}[c]));};"
+    },
+    {
+      "id": "xml-escape-bridge",
+      "expectedOccurrences": 1,
+      "find": "const escXML=s=>String(s??'').replace(/[<>&\\\"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','\\\"':'&quot;',\"'\":'&apos;'}[c]));",
+      "replace": "const escXML=s=>{const service=globalThis.AtelierV14Shell?.text;if(service?.escapeXml)return service.escapeXml(s);return String(s??'').replace(/[<>&\\\"']/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;','\\\"':'&quot;',\"'\":'&apos;'}[c]));};"
+    }
+  ]
+}
