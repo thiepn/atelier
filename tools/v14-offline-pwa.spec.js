@@ -1,6 +1,21 @@
 const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.V14_SMOKE_URL || 'http://127.0.0.1:4173/';
+const V14_RELEASE = '14.0.0-dev.14';
+const V14_CACHE = `atelier-v14-dev-${V14_RELEASE}`;
+const BASELINE_CACHE = 'atelier-space-studio-13.2.0';
+const STALE_V14_CACHE = 'atelier-v14-dev-stale-probe';
+const V14_CORE = [
+  './v14/dev-status/dev-status.css',
+  './v14/shell/notifications.js',
+  './v14/shell/dialogs.js',
+  './v14/shell/commands.js',
+  './v14/shell/files.js',
+  './v14/shell/icons.js',
+  './v14/shell/text.js',
+  './v14/shell/units.js',
+  './v14/dev-status/dev-status.js',
+];
 
 async function waitForV14Shell(page) {
   await page.waitForFunction(() => Boolean(
@@ -36,24 +51,28 @@ async function waitForControlledServiceWorker(page) {
   await page.waitForFunction(() => Boolean(navigator.serviceWorker?.controller));
 }
 
-async function serviceWorkerStatus(page) {
-  return page.evaluate(() => new Promise((resolve, reject) => {
+async function serviceWorkerMessage(page, type) {
+  return page.evaluate((messageType) => new Promise((resolve, reject) => {
     const controller = navigator.serviceWorker?.controller;
     if (!controller) {
       reject(new Error('No controlling service worker'));
       return;
     }
     const channel = new MessageChannel();
-    const timer = setTimeout(() => reject(new Error('Timed out waiting for service-worker status')), 5000);
+    const timer = setTimeout(() => reject(new Error(`Timed out waiting for service-worker ${messageType}`)), 5000);
     channel.port1.onmessage = (event) => {
       clearTimeout(timer);
       resolve(event.data);
     };
-    controller.postMessage({ type: 'GET_STATUS' }, [channel.port2]);
-  }));
+    controller.postMessage({ type: messageType }, [channel.port2]);
+  }), type);
 }
 
-test('generated V14 artifact survives a controlled offline reload', async ({ page, context }) => {
+async function serviceWorkerStatus(page) {
+  return serviceWorkerMessage(page, 'GET_STATUS');
+}
+
+test('generated V14 artifact uses an isolated offline shell and survives reload', async ({ page, context }) => {
   const pageErrors = [];
   const consoleErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error)));
@@ -68,10 +87,29 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
 
   const onlineStatus = await serviceWorkerStatus(page);
   expect(onlineStatus.type).toBe('ATELIER_SW_STATUS');
-  expect(onlineStatus.version).toBe('13.2.0');
-  expect(onlineStatus.cache).toBe('atelier-space-studio-13.2.0');
+  expect(onlineStatus.version).toBe(V14_RELEASE);
+  expect(onlineStatus.cache).toBe(V14_CACHE);
   expect(onlineStatus.ready).toBe(true);
   expect(onlineStatus.missing).toEqual([]);
+  for (const asset of V14_CORE) expect(onlineStatus.core).toContain(asset);
+
+  const initialCaches = await page.evaluate(async ({ baseline, stale }) => {
+    await caches.open(baseline);
+    await caches.open(stale);
+    return caches.keys();
+  }, { baseline: BASELINE_CACHE, stale: STALE_V14_CACHE });
+  expect(initialCaches).toContain(V14_CACHE);
+  expect(initialCaches).toContain(BASELINE_CACHE);
+  expect(initialCaches).toContain(STALE_V14_CACHE);
+
+  const cleanup = await serviceWorkerMessage(page, 'CLEAR_STALE_CACHES');
+  expect(cleanup.cache).toBe(V14_CACHE);
+  expect(cleanup.deleted).toContain(STALE_V14_CACHE);
+  expect(cleanup.deleted).not.toContain(BASELINE_CACHE);
+  const cachesAfterCleanup = await page.evaluate(() => caches.keys());
+  expect(cachesAfterCleanup).toContain(V14_CACHE);
+  expect(cachesAfterCleanup).toContain(BASELINE_CACHE);
+  expect(cachesAfterCleanup).not.toContain(STALE_V14_CACHE);
 
   const v14Resources = await page.evaluate(() => performance.getEntriesByType('resource')
     .map((entry) => entry.name)
@@ -119,8 +157,15 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
     });
 
     const offlineStatus = await serviceWorkerStatus(page);
+    expect(offlineStatus.version).toBe(V14_RELEASE);
+    expect(offlineStatus.cache).toBe(V14_CACHE);
     expect(offlineStatus.ready).toBe(true);
     expect(offlineStatus.missing).toEqual([]);
+    for (const asset of V14_CORE) expect(offlineStatus.core).toContain(asset);
+
+    const offlineCaches = await page.evaluate(() => caches.keys());
+    expect(offlineCaches).toContain(V14_CACHE);
+    expect(offlineCaches).toContain(BASELINE_CACHE);
   } finally {
     await context.setOffline(false);
   }
