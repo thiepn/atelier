@@ -7,7 +7,8 @@ async function waitForV14Shell(page) {
     globalThis.AtelierV14Shell?.notifications &&
     globalThis.AtelierV14Shell?.dialogs &&
     globalThis.AtelierV14Shell?.commands &&
-    globalThis.AtelierV14Shell?.files
+    globalThis.AtelierV14Shell?.files &&
+    globalThis.AtelierV14Shell?.icons
   ));
 }
 
@@ -70,13 +71,10 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
   expect(onlineStatus.ready).toBe(true);
   expect(onlineStatus.missing).toEqual([]);
 
-  // Confirm V14 assets were fetched at least once while online. The inherited service
-  // worker caches same-origin successful GET responses, so this warm load is the
-  // development-artifact prerequisite for the offline reload below.
   const v14Resources = await page.evaluate(() => performance.getEntriesByType('resource')
     .map((entry) => entry.name)
     .filter((name) => name.includes('/v14/')));
-  expect(v14Resources.length).toBeGreaterThanOrEqual(5);
+  expect(v14Resources.length).toBeGreaterThanOrEqual(6);
 
   await context.setOffline(true);
   try {
@@ -94,6 +92,9 @@ test('generated V14 artifact survives a controlled offline reload', async ({ pag
     await expect(page.locator('[data-v14-field="network"]')).toHaveText('offline');
     await expect(page.locator('[data-v14-field="serviceWorker"]')).toHaveText('controlled');
     await expect(page.locator('[data-v14-field="baseline"]')).toHaveText('Atelier 13.2.0');
+
+    const iconVersion = await page.evaluate(() => globalThis.AtelierV14Shell.icons.version);
+    expect(iconVersion).toBe('14.0.0-dev.9');
 
     const offlineStatus = await serviceWorkerStatus(page);
     expect(offlineStatus.ready).toBe(true);
