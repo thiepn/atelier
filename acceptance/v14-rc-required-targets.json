@@ -1,0 +1,40 @@
+{
+  "schema": "atelier-v14-rc-acceptance-plan-v1",
+  "acceptanceMilestone": "14.0.0-rc-physical",
+  "evidenceSchema": "atelier-v14-rc-physical-acceptance-evidence-v1",
+  "physicalSignoffSchema": "atelier-v14-rc-physical-signoff-v1",
+  "requiredRcStatusSchema": "atelier-v14-release-candidate-status-v1",
+  "requiresPriorCertificationMatrix": "CERTIFICATION_MATRIX_13.3.1.json",
+  "candidateOrigin": {
+    "httpsRequired": true,
+    "sameOriginRuntimeRequired": true,
+    "productionOriginForbiddenUntilPriorSignoff": true
+  },
+  "targets": [
+    {
+      "id": "firefox-desktop",
+      "label": "Firefox Desktop",
+      "requiredTests": ["rc-identity", "no-dev-diagnostics", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "offline-browser", "keyboard", "cache-isolation", "a11y-smoke"]
+    },
+    {
+      "id": "safari-macos",
+      "label": "Safari macOS",
+      "requiredTests": ["rc-identity", "no-dev-diagnostics", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "offline-browser", "keyboard", "cache-isolation", "a11y-smoke"]
+    },
+    {
+      "id": "safari-ios-iphone",
+      "label": "Safari iPhone / Home Screen Web App",
+      "requiredTests": ["rc-identity", "no-dev-diagnostics", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "touch", "pwa-install", "offline-pwa", "cache-isolation", "a11y-smoke"]
+    },
+    {
+      "id": "safari-ipados-ipad",
+      "label": "Safari iPad / Home Screen Web App",
+      "requiredTests": ["rc-identity", "no-dev-diagnostics", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "touch", "pwa-install", "offline-pwa", "cache-isolation", "a11y-smoke"]
+    },
+    {
+      "id": "chrome-android-installed-pwa",
+      "label": "Chrome Android Installed PWA",
+      "requiredTests": ["rc-identity", "no-dev-diagnostics", "project-open", "editing", "3d", "catalog", "persistence", "backup-roundtrip", "touch", "pwa-install", "offline-pwa", "cache-isolation", "a11y-smoke"]
+    }
+  ]
+}
